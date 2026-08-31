@@ -5,6 +5,6 @@ export default defineConfig({
   plugins: [react()],
   server: { port: 4173 },
   preview: { port: 4173 },
-  build: { sourcemap: true },
+  build: { sourcemap: false },
   test: { environment: "jsdom", globals: true, include: ["src/**/*.test.ts"] },
 });

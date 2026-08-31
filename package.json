@@ -1,7 +1,16 @@
 {
   "name": "what-can-i-click",
-  "private": true,
+  "private": false,
   "version": "0.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Paul-M-Kallarackal/what-can-i-click.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Paul-M-Kallarackal/what-can-i-click/issues"
+  },
+  "homepage": "https://github.com/Paul-M-Kallarackal/what-can-i-click#readme",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
@@ -11,7 +20,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "check": "bun run typecheck && bun run test && bun run build",
+    "audit": "bun audit --audit-level=high",
+    "check": "bun run typecheck && bun run test && bun run audit && bun run build",
     "deploy": "bun run build && wrangler pages deploy dist --project-name what-can-i-click"
   },
   "dependencies": {
@@ -38,4 +48,3 @@
     "wrangler": "^4.33.1"
   }
 }
-
