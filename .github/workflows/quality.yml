@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: quality-${{ github.ref }}
@@ -57,4 +58,3 @@ jobs:
         run: bunx playwright install chromium
       - run: bun run build
       - run: bun run test:e2e --workers=50%
-
