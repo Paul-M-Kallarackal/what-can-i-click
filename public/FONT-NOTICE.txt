@@ -1,0 +1,8 @@
+Strawn Variable Font
+Copyright (c) 2026 Moriatz Labs
+
+Source: https://github.com/moriatz/strawn
+The source specimen identifies the font as SIL Open Font License 1.1. This
+notice is retained with the font asset; verify the intended font license with
+the author before public redistribution.
+
