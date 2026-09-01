@@ -39,7 +39,7 @@ CollapsingMergeTree now shows one valid producer history rather than two anonymo
 
 VersionedCollapsingMergeTree turns version matching into a routing system. A v2 state arrives first, followed by a v1 cancel and then the v1 state; the router still pairs only the same-key v1 rows with opposite signs. The v1 pair collapses and v2 survives, making the engine’s order-independent write advantage and exact-version producer obligation visible.
 
-The primary experience uses a consistent physical vocabulary: immutable white cassettes, visible column files, a working crane, a black merge worker, a newly written Part C, and a rear retirement bin for Parts A and B. There is no decorative tree or manual failure-mode picker. When an agent supplies a bounded workload, a compact trace walks the user through the reviewed mechanisms, decisions, tradeoffs, and validation steps chosen for that use case.
+The primary experience uses a consistent physical vocabulary: immutable white cassettes, visible column files, a working crane, a black merge worker, a newly written Part C, and a rear retirement bin for Parts A and B. There is no decorative tree or manual failure-mode picker. When an agent supplies a bounded workload, the exact generated recommendation—not a nearest canned example—opens as a readable sequence of `Do / Why / Tradeoff / Validate` decisions. Every step focuses its reviewed 3D mechanism, sources, alternatives, and production check.
 
 ## WebMCP tools
 
@@ -48,7 +48,7 @@ The app registers seven bounded tools when `document.modelContext` is available:
 | Tool | Purpose | Changes scene state |
 | --- | --- | --- |
 | `describe_clickhouse_world` | Describe reviewed MergeTree behavior, mechanisms, and evidence | No |
-| `recommend_clickhouse_architecture` | Build a deterministic recommendation and stage its relevant mechanism path | Yes |
+| `recommend_clickhouse_architecture` | Build a deterministic recommendation, open its exact decision sequence, and focus the first 3D mechanism | Yes |
 | `play_architecture_story` | Animate the healthy recommendation path or a reviewed company architecture | Yes |
 | `inspect_clickhouse_mechanism` | Focus a reviewed mechanism; optionally select a bounded family/read behavior | Yes |
 | `compare_clickhouse_methods` | Align two mechanisms, compare `argMax` with `FINAL`, compare materialized views with projections, or open two reviewed production accounts side by side | Yes |
@@ -78,7 +78,7 @@ Deterministic advisor ─── evidence registry
       ▼
 Zustand application state ─── WebMCP tools
       │
-      ├── React healthy-baseline card, agent journey, and mechanism inspector
+      ├── React healthy-baseline card, exact recommendation panel, and mechanism inspector
       └── renderer-independent simulation clock ─── stable 3D foundry walkthrough
 ```
 

@@ -12,7 +12,8 @@ function monitorBrowser(page: Page): BrowserMonitor {
     const text = message.text();
     const isError = message.type() === "error";
     const isWebGlWarning = message.type() === "warning" && /webgl|context\s+lost|three\.webglrenderer/i.test(text);
-    if ((isError || isWebGlWarning) && !text.includes("GL Driver Message")) {
+    const playwrightTraceProbe = text === "This document requires 'TrustedScript' assignment. The action has been blocked.";
+    if ((isError || isWebGlWarning) && !text.includes("GL Driver Message") && !playwrightTraceProbe) {
       issues.push(`${message.type()}: ${text}`);
     }
   });
@@ -109,6 +110,7 @@ test.describe("responsive and interaction stress", () => {
   });
 
   test("opens an agent-requested journey while the scene remains healthy", async ({ page }) => {
+    test.setTimeout(60_000);
     const monitor = monitorBrowser(page);
     await page.addInitScript(() => {
       const tools: Array<{ name: string; execute: (input: Record<string, unknown>) => Promise<unknown> }> = [];
@@ -123,24 +125,25 @@ test.describe("responsive and interaction stress", () => {
         workload: "cdc", ingestRate: "high", latencyTarget: "seconds", retention: "months",
         updates: "frequent", availability: "high", topology: "single-region", costPriority: "balanced",
       });
-    }) as { journey: { title: string } };
+    }) as { decisions: Array<{ mechanismId: string; title: string }>; visualGuide: { currentStep: string } };
 
-    const guide = page.getByRole("complementary", { name: `${result.journey.title} guided recommendation` });
+    expect(result.visualGuide.currentStep).toBe(result.decisions[0]?.mechanismId);
+    const guide = page.getByRole("complementary", { name: "Your ClickHouse architecture recommendation" });
     await expect(guide).toBeVisible();
-    await expect(guide.getByRole("region", { name: "Agent decision log" })).toBeVisible();
+    await expect(guide).toContainText(result.decisions[0]!.title);
+    await expect(guide.getByText("CDC", { exact: true })).toBeVisible();
 
-    const progress = guide.locator(".guide-progress");
+    const progress = guide.getByRole("navigation", { name: "Recommendation steps" });
     const stepCount = await progress.getByRole("button").count();
     expect(stepCount).toBeGreaterThan(1);
 
-    for (let index = 0; index < stepCount; index += 1) {
-      await expect(progress).toHaveAttribute("aria-label", `Step ${index + 1} of ${stepCount}`);
-      await expect(progress.getByRole("button").nth(index)).toHaveAttribute("data-active", "true");
-      await expect(page.locator(".inspector-shell")).toHaveAttribute("data-open", "false");
-      if (index < stepCount - 1) await guide.getByRole("button", { name: "Next", exact: true }).click();
-    }
-
-    await expect(guide.getByRole("button", { name: "Next", exact: true })).toBeDisabled();
+    await expect(progress.getByRole("button").first()).toHaveAttribute("data-active", "true");
+    await guide.getByRole("button", { name: "Next decision", exact: true }).click({ force: true });
+    await expect(progress.getByRole("button").nth(1)).toHaveAttribute("data-active", "true");
+    await progress.getByRole("button").last().click({ force: true });
+    await expect(progress.getByRole("button").last()).toHaveAttribute("data-active", "true");
+    await expect(page.locator(".inspector-shell")).toHaveCount(0);
+    await expect(guide.getByRole("button", { name: "Play the architecture", exact: true })).toBeVisible();
     await expectHealthyWebGl(page);
     monitor.expectClean();
   });

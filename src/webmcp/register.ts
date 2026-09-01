@@ -194,17 +194,25 @@ export function createToolDefinitions(): ToolDefinition[] {
         const recommendation = recommendArchitecture(profile);
         const journey = nearestUseCaseJourney(profile);
         const mergeFamilyRecommendation = { familyId: journey.familyId, latestReadStrategy: journey.strategy.latestRead ?? "background" as LatestReadStrategy, reason: journey.strategy.rationale };
-        useAtlasStore.getState().setRecommendation(recommendation);
-        useAtlasStore.getState().setMergeFamily(journey.familyId);
-        useAtlasStore.getState().setLatestReadStrategy(mergeFamilyRecommendation.latestReadStrategy);
-        useAtlasStore.getState().startJourney(journey.id);
+        const store = useAtlasStore.getState();
+        store.setMergeFamily(journey.familyId);
+        store.setLatestReadStrategy(mergeFamilyRecommendation.latestReadStrategy);
+        store.setRecommendation(recommendation, profile);
         return {
           ...recommendation,
           mergeFamilyRecommendation: { ...mergeFamilyRecommendation, family: mergeFamilySummary(mergeFamilyRecommendation.familyId) },
-          journey: { id: journey.id, title: journey.title, agentLog: journey.agentLog, guidePath: journey.guidePath, tradeoff: journey.tradeoff },
+          visualGuide: {
+            panel: "open",
+            currentStep: recommendation.decisions[0]?.mechanismId ?? null,
+            steps: recommendation.decisions.map((entry) => ({
+              mechanismId: entry.mechanismId,
+              title: entry.title,
+              confidence: entry.confidence,
+            })),
+          },
           userGuide: {
             mode: "stable-architecture",
-            outcome: "A reviewed architecture path, visible mechanism by mechanism, with alternatives, tradeoffs, evidence, and production validation steps.",
+            outcome: "The exact workload recommendation is open in the site, visible mechanism by mechanism, with alternatives, tradeoffs, evidence, and production validation steps.",
             nextActions: recommendation.validationSteps.slice(0, 5),
           },
         };
@@ -226,12 +234,14 @@ export function createToolDefinitions(): ToolDefinition[] {
           if (family) useAtlasStore.getState().setMergeFamily(family);
           useAtlasStore.getState().setLatestReadStrategy(declaredRecipeReadStrategy(recipe));
           useAtlasStore.getState().setScenario("healthy");
+          useAtlasStore.getState().setJourneyPanelOpen(false);
           useAtlasStore.getState().playStory("architecture", recipe.mechanismPath);
           return { ok: true, mode: "stable-architecture", story: "company-architecture", implementation: implementationSummary(implementation) };
         }
         const recommendation = useAtlasStore.getState().recommendation;
         if (!recommendation) return { ok: false, message: "Create a recommendation first." };
         useAtlasStore.getState().setScenario("healthy");
+        useAtlasStore.getState().setJourneyPanelOpen(false);
         useAtlasStore.getState().playStory("architecture", recommendation.path);
         return {
           ok: true,
@@ -266,6 +276,7 @@ export function createToolDefinitions(): ToolDefinition[] {
           store.setLatestReadStrategy(resolvedStrategy);
           return { ok: true, view: "family-machine", family: mergeFamilySummary(args.mergeFamilyId), latestReadStrategy: resolvedStrategy };
         }
+        useAtlasStore.getState().setJourneyPanelOpen(false);
         useAtlasStore.getState().selectMechanism(args.mechanismId!, args.view ?? "mechanism");
         return { ok: true, view: args.view ?? "mechanism", mechanism: mechanismSummary(args.mechanismId!) };
       },

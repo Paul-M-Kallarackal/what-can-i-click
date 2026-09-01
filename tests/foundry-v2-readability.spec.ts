@@ -3,7 +3,11 @@ import { expect, test } from "@playwright/test";
 test("keeps the white MergeTree foundry and stable agent handoff legible", async ({ page }) => {
   test.setTimeout(60_000);
   const browserErrors: string[] = [];
-  page.on("console", (message) => { if (message.type() === "error") browserErrors.push(message.text()); });
+  page.on("console", (message) => {
+    const text = message.text();
+    const playwrightTraceProbe = text === "This document requires 'TrustedScript' assignment. The action has been blocked.";
+    if (message.type() === "error" && !playwrightTraceProbe) browserErrors.push(text);
+  });
   page.on("pageerror", (error) => browserErrors.push(error.message));
 
   for (const viewport of [

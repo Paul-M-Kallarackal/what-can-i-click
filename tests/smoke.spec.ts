@@ -4,7 +4,9 @@ import { USE_CASE_JOURNEYS } from "../src/data/useCaseJourneys";
 test("renders the MergeTree foundry without browser or WebGL errors", async ({ page }) => {
   const errors: string[] = [];
   page.on("console", (message) => {
-    if ((message.type() === "error" || message.type() === "warning") && !message.text().includes("GL Driver Message")) errors.push(`${message.type()}: ${message.text()}`);
+    const text = message.text();
+    const playwrightTraceProbe = text === "This document requires 'TrustedScript' assignment. The action has been blocked.";
+    if ((message.type() === "error" || message.type() === "warning") && !text.includes("GL Driver Message") && !playwrightTraceProbe) errors.push(`${message.type()}: ${text}`);
   });
   page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
   await page.goto("/", { waitUntil: "domcontentloaded" });
@@ -35,11 +37,14 @@ test("an in-browser WebMCP agent can stage a bounded architecture path", async (
       workload: "product-analytics", ingestRate: "extreme", latencyTarget: "interactive", retention: "years",
       updates: "occasional", availability: "high", topology: "multi-region", costPriority: "performance",
     });
-  }) as { path: string[]; journey: { id: string; title: string } };
+  }) as { path: string[]; decisions: Array<{ mechanismId: string; title: string }>; visualGuide: { panel: string; currentStep: string } };
   expect(result.path).toEqual(expect.arrayContaining(["architecture.sharding", "architecture.keeper"]));
-  expect(result.journey.id).toBe("multi-region-product-analytics");
-  await expect(page.getByRole("complementary", { name: /Multi-region product analytics guided recommendation/ })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Agent decision log" })).toBeVisible();
+  expect(result.visualGuide).toMatchObject({ panel: "open", currentStep: result.decisions[0]?.mechanismId });
+  const recommendation = page.getByRole("complementary", { name: "Your ClickHouse architecture recommendation" });
+  await expect(recommendation).toBeVisible();
+  await expect(recommendation.getByRole("heading", { name: "Product analytics baseline" })).toBeVisible();
+  await expect(recommendation).toContainText(result.decisions[0]!.title);
+  await expect(recommendation.getByText("extreme ingest", { exact: true })).toBeVisible();
 });
 
 test("materialized views and projections keep different visible contracts", async ({ page }) => {
@@ -184,7 +189,7 @@ test("an agent-selected latest-state method stays synchronized with its 3D famil
   await expect(page.locator("html")).toHaveAttribute("data-versioned-collapsing-survivor", "v2-sign-plus-one");
 });
 
-test("all reviewed workload profiles return their matching WebMCP journey", async ({ page }) => {
+test("all reviewed workload profiles open their exact WebMCP recommendation", async ({ page }) => {
   test.setTimeout(90_000);
   await page.addInitScript(() => {
     const tools: Array<{ name: string; execute: (input: Record<string, unknown>) => Promise<unknown> }> = [];
@@ -197,9 +202,12 @@ test("all reviewed workload profiles return their matching WebMCP journey", asyn
     const result = await page.evaluate(async (profile) => {
       const tools = (window as unknown as { __atlasTools: Array<{ name: string; execute: (input: Record<string, unknown>) => Promise<unknown> }> }).__atlasTools;
       return tools.find((tool) => tool.name === "recommend_clickhouse_architecture")!.execute(profile);
-    }, journey.profile) as { journey: { id: string } };
-    expect(result.journey.id).toBe(journey.id);
-    await expect(page.getByRole("complementary", { name: `${journey.title} guided recommendation` })).toBeVisible();
+    }, journey.profile) as { decisions: Array<{ mechanismId: string; title: string }>; visualGuide: { currentStep: string; steps: unknown[] } };
+    expect(result.visualGuide.currentStep).toBe(result.decisions[0]?.mechanismId);
+    expect(result.visualGuide.steps).toHaveLength(result.decisions.length);
+    const recommendation = page.getByRole("complementary", { name: "Your ClickHouse architecture recommendation" });
+    await expect(recommendation).toBeVisible();
+    await expect(recommendation).toContainText(result.decisions[0]!.title);
   }
 });
 

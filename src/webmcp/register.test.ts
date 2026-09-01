@@ -37,20 +37,24 @@ describe("WebMCP tools", () => {
     const result = await recommend.execute(profile);
     expect(result).toMatchObject({
       path: expect.arrayContaining(["architecture.sharding", "architecture.keeper"]),
-      journey: {
-        id: "multi-region-product-analytics",
-        guidePath: expect.arrayContaining([
-          expect.objectContaining({ mechanismId: "ingestion.async-buffer", evidenceId: "ly-corporation" }),
+      visualGuide: {
+        panel: "open",
+        currentStep: "ingestion.async-buffer",
+        steps: expect.arrayContaining([
+          expect.objectContaining({ mechanismId: "ingestion.async-buffer" }),
         ]),
       },
     });
     expect(useAtlasStore.getState()).toMatchObject({
-      activeJourneyId: "multi-region-product-analytics",
+      activeJourneyId: null,
+      recommendationProfile: profile,
+      recommendationStepIndex: 0,
+      journeyPanelOpen: true,
       mergeFamilyId: "merge",
       latestReadStrategy: "background",
-      selectedMechanismId: null,
+      selectedMechanismId: "ingestion.async-buffer",
       selectedEvidenceId: null,
-      viewLevel: "system",
+      viewLevel: "mechanism",
     });
     expect(await play.execute({})).toMatchObject({ ok: true });
     expect(useAtlasStore.getState().storyMode).toBe("architecture");

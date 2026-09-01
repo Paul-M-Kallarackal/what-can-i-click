@@ -6,6 +6,8 @@ import { AgentJourneyPanel } from "./components/ui/AgentJourneyPanel";
 import { Inspector } from "./components/ui/Inspector";
 import { MergeFamilyNavigator } from "./components/ui/MergeFamilyNavigator";
 import { OperationalHud } from "./components/ui/OperationalHud";
+import { RecommendationPanel } from "./components/ui/RecommendationPanel";
+import { RecommendationRail } from "./components/ui/RecommendationRail";
 import { SimulationControls } from "./components/ui/SimulationControls";
 import { useAtlasStore } from "./store/useAtlasStore";
 import { registerWebMcpTools } from "./webmcp/register";
@@ -13,6 +15,7 @@ import { registerWebMcpTools } from "./webmcp/register";
 export default function App() {
   const selectedMechanismId = useAtlasStore((state) => state.selectedMechanismId);
   const journeyPanelOpen = useAtlasStore((state) => state.journeyPanelOpen);
+  const storyMode = useAtlasStore((state) => state.storyMode);
   useEffect(() => registerWebMcpTools(), []);
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -54,10 +57,12 @@ export default function App() {
 
       {!selectedMechanismId && !journeyPanelOpen && <MergeFamilyNavigator />}
       <AgentJourneyPanel />
+      <RecommendationPanel />
+      {storyMode === "architecture" && !journeyPanelOpen && <RecommendationRail />}
 
       <div className="gesture-note" aria-hidden="true"><span>Drag</span> orbit · <span>Shift + drag</span> pan · <span>Scroll</span> zoom · <span>Esc</span> step back</div>
       <div id="machine-controls"><SimulationControls /></div>
-      <Inspector />
+      {!journeyPanelOpen && <Inspector />}
       <AboutPanel />
       <footer className="source-footer"><span>See the gotcha. Choose around it.</span><span>Official guidance → derived advice → field evidence</span></footer>
     </main>

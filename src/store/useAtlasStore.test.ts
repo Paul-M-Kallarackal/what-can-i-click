@@ -1,5 +1,18 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { recommendArchitecture } from "../lib/advisor";
+import type { WorkloadProfile } from "../types";
 import { useAtlasStore } from "./useAtlasStore";
+
+const recommendationProfile: WorkloadProfile = {
+  workload: "observability",
+  ingestRate: "high",
+  latencyTarget: "interactive",
+  retention: "months",
+  updates: "append-only",
+  availability: "high",
+  topology: "single-region",
+  costPriority: "balanced",
+};
 
 describe("visual-note state", () => {
   beforeEach(() => useAtlasStore.getState().reset());
@@ -65,5 +78,30 @@ describe("visual-note state", () => {
       playing: true,
       simulationTime: 0,
     });
+  });
+
+  it("stages the exact recommendation and moves its 3D focus decision by decision", () => {
+    const recommendation = recommendArchitecture(recommendationProfile);
+    useAtlasStore.getState().setRecommendation(recommendation, recommendationProfile);
+
+    expect(useAtlasStore.getState()).toMatchObject({
+      recommendationProfile,
+      recommendationStepIndex: 0,
+      journeyPanelOpen: true,
+      activeJourneyId: null,
+      selectedMechanismId: recommendation.decisions[0]?.mechanismId,
+      scenario: "healthy",
+      playing: false,
+    });
+
+    useAtlasStore.getState().setRecommendationStep(3);
+    expect(useAtlasStore.getState()).toMatchObject({
+      recommendationStepIndex: 3,
+      selectedMechanismId: recommendation.decisions[3]?.mechanismId,
+      viewLevel: "mechanism",
+    });
+
+    useAtlasStore.getState().setRecommendationStep(999);
+    expect(useAtlasStore.getState().recommendationStepIndex).toBe(recommendation.decisions.length - 1);
   });
 });
