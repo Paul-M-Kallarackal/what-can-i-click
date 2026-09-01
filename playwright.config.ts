@@ -1,13 +1,21 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const isCi = Boolean(process.env.CI);
+
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: true,
-  retries: process.env.CI ? 2 : 0,
-  // Each test owns a live WebGL canvas. More than two parallel Chromium
-  // contexts contend for the same GPU process and create false click timeouts.
-  workers: 2,
-  reporter: process.env.CI ? "github" : "list",
+  retries: isCi ? 1 : 0,
+  // GitHub-hosted runners software-render the Three.js canvas. A second live
+  // Chromium context starves requestAnimationFrame and skips semantic machine
+  // phases, so CI deliberately owns one WebGL context at a time. Local runs
+  // retain two workers for faster feedback on machines with a real GPU.
+  workers: isCi ? 1 : 2,
+  // Stop an unhealthy renderer after its first retried failure. This preserves
+  // the full suite on green runs while keeping the first trace and screenshot
+  // legible instead of creating a long cascade of secondary timeouts.
+  maxFailures: isCi ? 1 : undefined,
+  reporter: isCi ? "github" : "list",
   use: {
     baseURL: "http://127.0.0.1:4173",
     trace: "retain-on-failure",
