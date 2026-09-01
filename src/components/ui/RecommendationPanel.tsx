@@ -1,4 +1,5 @@
 import { ArrowUpRight, Bot, Check, ChevronDown, ChevronLeft, ChevronRight, Play, ShieldCheck, X } from "lucide-react";
+import type { CSSProperties } from "react";
 import { mechanismById } from "../../data/mechanisms";
 import { useAtlasStore } from "../../store/useAtlasStore";
 import type { ArchitectureRecommendation, WorkloadProfile } from "../../types";
@@ -79,20 +80,37 @@ export function RecommendationPanel() {
         <div>{facts.map((fact) => <b key={fact}>{fact}</b>)}</div>
       </section>
 
-      <nav className="recommendation-route" aria-label="Recommendation steps">
-        {recommendation.decisions.map((entry, routeIndex) => (
-          <button
-            key={entry.id}
-            type="button"
-            data-active={routeIndex === index}
-            data-complete={routeIndex < index}
-            aria-current={routeIndex === index ? "step" : undefined}
-            aria-label={`Open step ${routeIndex + 1}: ${entry.title}`}
-            onClick={() => move(routeIndex)}
-          >
-            {routeIndex < index ? <Check size={12} /> : routeIndex + 1}
-          </button>
-        ))}
+      <nav
+        className="recommendation-route"
+        aria-label="Recommendation steps"
+        style={{ "--route-progress": `${recommendation.decisions.length > 1 ? (index / (recommendation.decisions.length - 1)) * 100 : 0}%` } as CSSProperties}
+      >
+        <div className="recommendation-route__head"><span>Drag to move through the 3D architecture</span><strong>{index + 1} / {recommendation.decisions.length}</strong></div>
+        <input
+          type="range"
+          min={0}
+          max={recommendation.decisions.length - 1}
+          step={1}
+          value={index}
+          onChange={(event) => move(Number(event.currentTarget.value))}
+          aria-label="Move through the recommended architecture"
+          aria-valuetext={`Step ${index + 1}: ${decision.title}`}
+        />
+        <div className="recommendation-route__ticks">
+          {recommendation.decisions.map((entry, routeIndex) => (
+            <button
+              key={entry.id}
+              type="button"
+              data-active={routeIndex === index}
+              data-complete={routeIndex < index}
+              aria-current={routeIndex === index ? "step" : undefined}
+              aria-label={`Open step ${routeIndex + 1}: ${entry.title}`}
+              onClick={() => move(routeIndex)}
+            >
+              {routeIndex < index ? <Check size={10} /> : routeIndex + 1}
+            </button>
+          ))}
+        </div>
       </nav>
 
       <section className="recommendation-decision" aria-live="polite">

@@ -132,15 +132,18 @@ test.describe("responsive and interaction stress", () => {
     await expect(guide).toBeVisible();
     await expect(guide).toContainText(result.decisions[0]!.title);
     await expect(guide.getByText("CDC", { exact: true })).toBeVisible();
+    await expect(guide.getByText(/Use ClickPipes where the source is supported/)).toBeVisible();
+    await expect(page.locator(".family-workbench")).toHaveCount(0);
 
     const progress = guide.getByRole("navigation", { name: "Recommendation steps" });
+    const slider = guide.getByRole("slider", { name: "Move through the recommended architecture" });
     const stepCount = await progress.getByRole("button").count();
     expect(stepCount).toBeGreaterThan(1);
 
     await expect(progress.getByRole("button").first()).toHaveAttribute("data-active", "true");
     await guide.getByRole("button", { name: "Next decision", exact: true }).click({ force: true });
     await expect(progress.getByRole("button").nth(1)).toHaveAttribute("data-active", "true");
-    await progress.getByRole("button").last().click({ force: true });
+    await slider.press("End");
     await expect(progress.getByRole("button").last()).toHaveAttribute("data-active", "true");
     await expect(page.locator(".inspector-shell")).toHaveCount(0);
     await expect(guide.getByRole("button", { name: "Play the architecture", exact: true })).toBeVisible();

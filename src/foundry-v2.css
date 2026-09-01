@@ -2703,6 +2703,7 @@ html[data-cutaway-open="true"] .operational-hud { display: none; }
    the actual workload decision readable instead of falling back to a canned story. */
 .journey-panel.recommendation-panel {
   width: min(520px, calc(100vw - 36px));
+  grid-auto-rows: max-content;
   gap: 16px;
   padding: 24px;
   border: 1px solid #d8d8d8;
@@ -2747,27 +2748,85 @@ html[data-cutaway-open="true"] .operational-hud { display: none; }
   font-weight: 650;
 }
 
-.recommendation-route { display: flex; flex-wrap: wrap; gap: 6px; }
-.recommendation-route button {
+.recommendation-route {
+  position: sticky;
+  z-index: 3;
+  top: -12px;
   display: grid;
-  width: 32px;
-  height: 32px;
+  gap: 8px;
+  margin-inline: -8px;
+  padding: 12px 8px;
+  border-bottom: 1px solid rgba(216, 216, 216, .9);
+  background: rgba(255, 255, 255, .96);
+  backdrop-filter: blur(16px);
+}
+.recommendation-route__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.recommendation-route__head span,
+.recommendation-route__head strong {
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.recommendation-route__head span { color: #555; }
+.recommendation-route__head strong { color: #6e5800; }
+.recommendation-route > input[type="range"] {
+  width: 100%;
+  height: 26px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  appearance: none;
+  background: transparent;
+  cursor: ew-resize;
+}
+.recommendation-route > input[type="range"]::-webkit-slider-runnable-track {
+  height: 8px;
+  border: 1px solid #cfcfcf;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ffcc01 0 var(--route-progress), #e8e8e5 var(--route-progress) 100%);
+}
+.recommendation-route > input[type="range"]::-webkit-slider-thumb {
+  width: 22px;
+  height: 22px;
+  margin-top: -8px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  appearance: none;
+  background: #171819;
+  box-shadow: 0 0 0 1px #171819, 0 4px 12px rgba(0, 0, 0, .22);
+}
+.recommendation-route > input[type="range"]::-moz-range-track {
+  height: 8px;
+  border: 1px solid #cfcfcf;
+  border-radius: 999px;
+  background: #e8e8e5;
+}
+.recommendation-route > input[type="range"]::-moz-range-progress { height: 8px; border-radius: 999px; background: #ffcc01; }
+.recommendation-route > input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; border: 3px solid #fff; border-radius: 50%; background: #171819; box-shadow: 0 0 0 1px #171819; }
+.recommendation-route__ticks { display: flex; justify-content: space-between; gap: 3px; }
+.recommendation-route__ticks button {
+  display: grid;
+  width: 26px;
+  height: 26px;
   place-items: center;
   padding: 0;
   border: 1px solid #d5d5d5;
-  border-radius: 9px;
+  border-radius: 7px;
   color: #555;
   background: #fff;
   cursor: pointer;
   font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 800;
 }
-.recommendation-route button[data-complete="true"] { color: #fff; border-color: #1b1c1d; background: #1b1c1d; }
-.recommendation-route button[data-active="true"] { color: #171200; border-color: #d6aa00; background: #ffcc01; box-shadow: 0 0 0 3px rgba(255, 204, 1, .2); }
+.recommendation-route__ticks button[data-complete="true"] { color: #fff; border-color: #1b1c1d; background: #1b1c1d; }
+.recommendation-route__ticks button[data-active="true"] { color: #171200; border-color: #d6aa00; background: #ffcc01; box-shadow: 0 0 0 3px rgba(255, 204, 1, .2); }
 
 .recommendation-decision {
   display: grid;
+  min-height: max-content;
   gap: 0;
   overflow: hidden;
   border: 1px solid #d8d8d8;
@@ -2883,6 +2942,7 @@ html[data-cutaway-open="true"] .operational-hud { display: none; }
 .recommendation-checklist li { padding-left: 4px; color: #353535; font-size: 14px; line-height: 1.5; }
 
 .recommendation-route button:focus-visible,
+.recommendation-route input:focus-visible,
 .recommendation-actions button:focus-visible,
 .recommendation-disclosure > summary:focus-visible,
 .recommendation-checklist > summary:focus-visible,
@@ -2893,6 +2953,8 @@ html[data-cutaway-open="true"] .operational-hud { display: none; }
   .recommendation-panel > header h2 { font-size: 31px; }
   .recommendation-panel > header > p { font-size: 15px; }
   .recommendation-profile b { font-size: 11px; }
+  .recommendation-route__head span { font-size: 10px; }
+  .recommendation-route__ticks button { width: 24px; height: 24px; font-size: 8px; }
   .recommendation-decision__head h3 { font-size: 24px; }
   .recommendation-glance > div { grid-template-columns: 68px minmax(0, 1fr); gap: 10px; padding: 13px 14px; }
   .recommendation-glance dd { font-size: 14px; }
