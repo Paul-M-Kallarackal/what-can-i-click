@@ -65,17 +65,17 @@ describe("closed overlay panels", () => {
     expectClosed(element, 2);
   });
 
-  it("keeps all 65 world choices and its close button inert while closed", () => {
+  it("keeps all 70 world choices and its close button inert while closed", () => {
     renderPanel(AccessibleWorld);
     const element = panel("World in words");
 
-    expectClosed(element, 66);
+    expectClosed(element, 71);
 
     act(() => useAtlasStore.getState().setWorldInWordsOpen(true));
     expectOpen(element);
 
     act(() => element.querySelector<HTMLButtonElement>('[aria-label="Close world in words"]')!.click());
-    expectClosed(element, 66);
+    expectClosed(element, 71);
   });
 
   it("keeps the about links and close button inert while closed", () => {

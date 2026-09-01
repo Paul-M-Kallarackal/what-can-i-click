@@ -10,6 +10,12 @@ const docs = (id: string, label: string, path: string): EvidenceReference => ({
 });
 
 export const SOURCES = {
+  commonMistakes: {
+    id: "common-mistakes",
+    label: "Getting started with ClickHouse: 13 mistakes and how to avoid them",
+    url: "https://clickhouse.com/blog/common-getting-started-issues-with-clickhouse",
+    kind: "official" as const,
+  },
   asyncInserts: docs("docs-async-inserts", "Asynchronous inserts", "/optimize/asynchronous-inserts"),
   clickPipes: docs("docs-clickpipes", "ClickPipes", "/integrations/clickpipes"),
   mergeTree: docs("docs-mergetree", "MergeTree table engine", "/engines/table-engines/mergetree-family/mergetree"),
@@ -22,6 +28,9 @@ export const SOURCES = {
   primaryIndexes: docs("docs-primary-index", "Sparse primary indexes", "/primary-indexes"),
   projections: docs("docs-projections", "Projections", "/data-modeling/projections"),
   materializedViews: docs("docs-materialized-views", "Incremental materialized views", "/materialized-view/incremental-materialized-view"),
+  refreshableViews: docs("docs-refreshable-materialized-views", "Refreshable materialized views", "/materialized-view/refreshable-materialized-view"),
+  deduplication: docs("docs-insert-deduplication", "Insert deduplication", "/guides/developer/deduplicating-inserts-on-retries"),
+  lightweightUpdates: docs("docs-lightweight-updates", "Lightweight updates", "/sql-reference/statements/update"),
   replication: docs("docs-replication", "Data replication", "/engines/table-engines/mergetree-family/replication"),
   keeper: docs("docs-keeper", "ClickHouse Keeper", "/guides/sre/keeper/clickhouse-keeper"),
   readonlyTables: {

@@ -23,7 +23,7 @@ test("renders the MergeTree foundry without browser or WebGL errors", async ({ p
   expect(errors).toEqual([]);
 });
 
-test("an in-browser WebMCP agent can stage a bounded architecture path", async ({ page }) => {
+test("an in-browser WebMCP agent can stage a bounded personalized gotcha path", async ({ page }) => {
   await page.addInitScript(() => {
     const tools: Array<{ name: string; execute: (input: Record<string, unknown>) => Promise<unknown> }> = [];
     Object.defineProperty(document, "modelContext", { configurable: true, value: { registerTool: (tool: typeof tools[number]) => { tools.push(tool); } } });
@@ -37,19 +37,13 @@ test("an in-browser WebMCP agent can stage a bounded architecture path", async (
       workload: "product-analytics", ingestRate: "extreme", latencyTarget: "interactive", retention: "years",
       updates: "occasional", availability: "high", topology: "multi-region", costPriority: "performance",
     });
-  }) as { path: string[]; decisions: Array<{ mechanismId: string; title: string }>; visualGuide: { panel: string; currentStep: string } };
+  }) as { path: string[]; gotchaJourney: Array<{ gotchaId: string; whyRelevant: string }>; visualGuide: { panel: string; currentStory: string; currentBeat: string } };
   expect(result.path).toEqual(expect.arrayContaining(["architecture.sharding", "architecture.keeper"]));
-  expect(result.visualGuide).toMatchObject({ panel: "open", currentStep: result.decisions[0]?.mechanismId });
-  const recommendation = page.getByRole("complementary", { name: "Your ClickHouse architecture recommendation" });
-  await expect(recommendation).toBeVisible();
-  await expect(recommendation.getByRole("heading", { name: "Product analytics baseline" })).toBeVisible();
-  await expect(recommendation).toContainText(result.decisions[0]!.title);
-  await expect(recommendation.getByText("extreme ingest", { exact: true })).toBeVisible();
-
-  const shardingStepIndex = result.decisions.findIndex((entry) => entry.mechanismId === "architecture.sharding");
-  expect(shardingStepIndex).toBeGreaterThanOrEqual(0);
-  await recommendation.getByRole("navigation", { name: "Recommendation steps" }).getByRole("button").nth(shardingStepIndex).click();
-  await expect(page.locator('.cluster-topology-contract[data-topology="replicated-shards"]')).toContainText("Two shards · two replicas each");
+  expect(result.visualGuide).toMatchObject({ panel: "gotcha-story", currentStory: result.gotchaJourney[0]?.gotchaId, currentBeat: "cause" });
+  const story = page.getByRole("complementary", { name: /story$/ });
+  await expect(story).toBeVisible();
+  await expect(story).toContainText(result.gotchaJourney[0]!.whyRelevant);
+  await expect(story.getByText("For your workload")).toBeVisible();
 
   const replicationResult = await page.evaluate(async () => {
     const tools = (window as unknown as { __atlasTools: Array<{ name: string; execute: (input: Record<string, unknown>) => Promise<unknown> }> }).__atlasTools;
@@ -57,11 +51,8 @@ test("an in-browser WebMCP agent can stage a bounded architecture path", async (
       workload: "general", ingestRate: "high", latencyTarget: "seconds", retention: "months",
       updates: "append-only", availability: "high", topology: "single-region", costPriority: "balanced",
     });
-  }) as { decisions: Array<{ mechanismId: string; title: string }> };
-  const replicationStepIndex = replicationResult.decisions.findIndex((entry) => entry.mechanismId === "architecture.replication");
-  expect(replicationStepIndex).toBeGreaterThanOrEqual(0);
-  await recommendation.getByRole("navigation", { name: "Recommendation steps" }).getByRole("button").nth(replicationStepIndex).click();
-  await expect(page.locator('.cluster-topology-contract[data-topology="replicated-single-shard"]')).toContainText("One shard · same rows on two replicas");
+  }) as { gotchaJourney: Array<{ gotchaId: string }> };
+  expect(replicationResult.gotchaJourney).toEqual(expect.arrayContaining([expect.objectContaining({ gotchaId: "scale-coordination" })]));
 });
 
 test("materialized views and projections keep different visible contracts", async ({ page }) => {
@@ -206,7 +197,7 @@ test("an agent-selected latest-state method stays synchronized with its 3D famil
   await expect(page.locator("html")).toHaveAttribute("data-versioned-collapsing-survivor", "v2-sign-plus-one");
 });
 
-test("all reviewed workload profiles open their exact WebMCP recommendation", async ({ page }) => {
+test("all reviewed workload profiles open a distinct bounded gotcha journey", async ({ page }) => {
   test.setTimeout(90_000);
   await page.addInitScript(() => {
     const tools: Array<{ name: string; execute: (input: Record<string, unknown>) => Promise<unknown> }> = [];
@@ -219,12 +210,14 @@ test("all reviewed workload profiles open their exact WebMCP recommendation", as
     const result = await page.evaluate(async (profile) => {
       const tools = (window as unknown as { __atlasTools: Array<{ name: string; execute: (input: Record<string, unknown>) => Promise<unknown> }> }).__atlasTools;
       return tools.find((tool) => tool.name === "recommend_clickhouse_architecture")!.execute(profile);
-    }, journey.profile) as { decisions: Array<{ mechanismId: string; title: string }>; visualGuide: { currentStep: string; steps: unknown[] } };
-    expect(result.visualGuide.currentStep).toBe(result.decisions[0]?.mechanismId);
-    expect(result.visualGuide.steps).toHaveLength(result.decisions.length);
-    const recommendation = page.getByRole("complementary", { name: "Your ClickHouse architecture recommendation" });
-    await expect(recommendation).toBeVisible();
-    await expect(recommendation).toContainText(result.decisions[0]!.title);
+    }, journey.profile) as { gotchaJourney: Array<{ gotchaId: string; whyRelevant: string }>; visualGuide: { currentStory: string; stories: unknown[] } };
+    expect(result.visualGuide.currentStory).toBe(result.gotchaJourney[0]?.gotchaId);
+    expect(result.gotchaJourney.length).toBeGreaterThanOrEqual(3);
+    expect(result.gotchaJourney.length).toBeLessThanOrEqual(5);
+    expect(new Set(result.gotchaJourney.map((item) => item.gotchaId)).size).toBe(result.gotchaJourney.length);
+    const story = page.getByRole("complementary", { name: /story$/ });
+    await expect(story).toBeVisible();
+    await expect(story).toContainText(result.gotchaJourney[0]!.whyRelevant);
   }
 });
 
@@ -236,9 +229,9 @@ test("keeps agent-only journeys, search, and the text system map out of the manu
   await expect(page.locator(".journey-panel")).toHaveCount(0);
 });
 
-test("keeps the manual world stable and hands personalization to WebMCP", async ({ page }) => {
+test("keeps the healthy manual world and exposes the six-gotcha doorway", async ({ page }) => {
   await page.goto("/", { waitUntil: "domcontentloaded" });
-  await expect(page.getByLabel("Stable architecture walkthrough")).toContainText("Fit ClickHouse to my workload");
+  await expect(page.getByLabel("Explore ClickHouse gotchas")).toContainText("Explore 6 gotchas");
   await expect(page.getByRole("menu", { name: "ClickHouse operational scenarios" })).toHaveCount(0);
   await expect(page.locator("html")).toHaveAttribute("data-merge-tree-landmark", "visible");
   await expect(page.locator(".merge-tree-monument-label")).toHaveCount(0);

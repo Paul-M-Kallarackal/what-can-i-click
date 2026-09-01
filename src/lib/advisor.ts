@@ -12,6 +12,11 @@ export const workloadProfileSchema = z.object({
   topology: z.enum(["single-region", "multi-region"]),
   costPriority: z.enum(["performance", "balanced", "cost"]),
   accelerationGoal: z.enum(["repeated-aggregation", "transform-or-route", "alternate-order", "transparent-acceleration", "none"]).optional(),
+  deployment: z.enum(["cloud", "self-managed", "undecided"]).optional(),
+  insertPattern: z.enum(["batched", "many-small", "mixed", "unknown"]).optional(),
+  queryShape: z.enum(["range-filter", "high-cardinality-aggregate", "point-lookup", "join-heavy", "mixed"]).optional(),
+  partitionCardinality: z.enum(["low", "medium", "high", "unknown"]).optional(),
+  materializedViewFootprint: z.enum(["none", "few", "many", "unknown"]).optional(),
 }).strict();
 
 function decision(input: Omit<ArchitectureDecision, "id" | "districtId">): ArchitectureDecision {

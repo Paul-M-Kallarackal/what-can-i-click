@@ -38,26 +38,26 @@ describe("WebMCP tools", () => {
     expect(result).toMatchObject({
       path: expect.arrayContaining(["architecture.sharding", "architecture.keeper"]),
       visualGuide: {
-        panel: "open",
-        currentStep: "ingestion.async-buffer",
-        steps: expect.arrayContaining([
-          expect.objectContaining({ mechanismId: "ingestion.async-buffer" }),
-        ]),
+        panel: "gotcha-story",
+        currentBeat: "cause",
+        stories: expect.arrayContaining([expect.objectContaining({ gotchaId: expect.any(String) })]),
       },
+      gotchaJourney: expect.any(Array),
     });
     expect(useAtlasStore.getState()).toMatchObject({
       activeJourneyId: null,
       recommendationProfile: profile,
       recommendationStepIndex: 0,
-      journeyPanelOpen: true,
+      journeyPanelOpen: false,
       mergeFamilyId: "replacing",
       latestReadStrategy: "argmax",
-      selectedMechanismId: "ingestion.async-buffer",
+      activeGotchaId: expect.any(String),
+      selectedMechanismId: null,
       selectedEvidenceId: null,
-      viewLevel: "mechanism",
+      viewLevel: "system",
     });
     expect(await play.execute({})).toMatchObject({ ok: true });
-    expect(useAtlasStore.getState().storyMode).toBe("architecture");
+    expect(useAtlasStore.getState().activeGotchaId).not.toBeNull();
   });
 
   it("rejects executable or secret-bearing fields", async () => {
@@ -68,11 +68,11 @@ describe("WebMCP tools", () => {
   it("returns bounded evidence results", async () => {
     const search = createToolDefinitions().find((tool) => tool.name === "search_clickhouse_evidence")!;
     const result = await search.execute({ query: "analytics" }) as {
-      corpus: { mechanisms: number; stories: number; implementationAccounts: number; architectureRecipes: number };
+      corpus: { mechanisms: number; stories: number; implementationAccounts: number; architectureRecipes: number; gotchaStories: number };
       mechanisms: unknown[];
       stories: unknown[];
     };
-    expect(result.corpus).toEqual({ mechanisms: MECHANISMS.length, stories: 10, implementationAccounts: COMPANY_IMPLEMENTATIONS.length, architectureRecipes: COMPANY_IMPLEMENTATIONS.length });
+    expect(result.corpus).toEqual({ mechanisms: MECHANISMS.length, stories: 10, implementationAccounts: COMPANY_IMPLEMENTATIONS.length, architectureRecipes: COMPANY_IMPLEMENTATIONS.length, gotchaStories: 6 });
     expect(result.mechanisms.length).toBeLessThanOrEqual(6);
     expect(result.stories.length).toBeLessThanOrEqual(10);
   });
@@ -111,7 +111,7 @@ describe("WebMCP tools", () => {
     expect(useAtlasStore.getState()).toMatchObject({ selectedMechanismId: null, viewLevel: "system", comparisonIds: null });
   });
 
-  it("keeps architecture playback in the stable case", async () => {
+  it("plays the latest personalized gotcha journey without leaving the healthy baseline behind", async () => {
     const tools = createToolDefinitions();
     const recommend = tools.find((tool) => tool.name === "recommend_clickhouse_architecture")!;
     const play = tools.find((tool) => tool.name === "play_architecture_story")!;
@@ -119,21 +119,21 @@ describe("WebMCP tools", () => {
     const recommendation = await recommend.execute(profile);
     expect(recommendation).toMatchObject({
       userGuide: {
-        mode: "stable-architecture",
-        outcome: expect.stringMatching(/tradeoffs, evidence, and production validation/i),
+        mode: "personalized-gotcha-journey",
+        outcome: expect.stringMatching(/three to five distinct gotchas/i),
         nextActions: expect.any(Array),
       },
     });
 
     expect(await play.execute({})).toMatchObject({
       ok: true,
-      mode: "stable-architecture",
-      path: expect.arrayContaining(["architecture.sharding", "architecture.keeper"]),
-      validationSteps: expect.any(Array),
+      mode: "personalized-gotcha-journey",
+      stories: expect.any(Array),
+      currentBeat: "cause",
     });
     expect(useAtlasStore.getState()).toMatchObject({
       scenario: "healthy",
-      storyMode: "architecture",
+      activeGotchaId: expect.any(String),
     });
     await expect(play.execute({ scenario: "tiny-insert-storm" })).rejects.toThrow();
   });
@@ -221,6 +221,28 @@ describe("WebMCP tools", () => {
         },
       },
     });
+  });
+
+  it("focuses every gotcha beat and supports the three new bounded comparisons", async () => {
+    const tools = createToolDefinitions();
+    const inspect = tools.find((tool) => tool.name === "inspect_clickhouse_mechanism")!;
+    const compare = tools.find((tool) => tool.name === "compare_clickhouse_methods")!;
+
+    expect(await inspect.execute({ gotchaId: "read-path-surprises", beat: "verify" })).toMatchObject({ ok: true, view: "gotcha-story", currentBeat: "verify" });
+    expect(useAtlasStore.getState()).toMatchObject({ activeGotchaId: "read-path-surprises", gotchaBeatIndex: 3, selectedMechanismId: null });
+
+    expect(await compare.execute({ comparison: "vertical-vs-horizontal-scaling" })).toMatchObject({ ok: true, comparison: "vertical-vs-horizontal-scaling", story: { id: "scale-coordination" } });
+    expect(await compare.execute({ comparison: "classic-mutation-vs-patch-update" })).toMatchObject({ ok: true, comparison: "classic-mutation-vs-patch-update", story: { id: "updates-deduplication" } });
+    expect(await compare.execute({ comparison: "incremental-vs-refreshable-view" })).toMatchObject({ ok: true, comparison: "incremental-vs-refreshable-view", story: { id: "materialized-view-traps" } });
+  });
+
+  it("accepts legacy profiles and optional diagnostics while rejecting unknown fields", async () => {
+    const recommend = createToolDefinitions().find((tool) => tool.name === "recommend_clickhouse_architecture")!;
+    const legacy = await recommend.execute(profile);
+    expect(legacy).toMatchObject({ assumptions: { deployment: "undecided", insertPattern: "mixed", queryShape: "mixed" } });
+    const diagnosed = await recommend.execute({ ...profile, deployment: "self-managed", insertPattern: "many-small", queryShape: "point-lookup", partitionCardinality: "high", materializedViewFootprint: "many" });
+    expect(diagnosed).toMatchObject({ assumptions: { deployment: "self-managed", insertPattern: "many-small", queryShape: "point-lookup", partitionCardinality: "high", materializedViewFootprint: "many" } });
+    await expect(recommend.execute({ ...profile, diagnostics: { sql: "SELECT 1" } })).rejects.toThrow();
   });
 
   it("opens two reviewed production implementations as the visible comparison", async () => {

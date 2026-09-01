@@ -48,8 +48,8 @@ async function expectResponsiveShell(page: Page, width: number) {
     { message: `horizontal overflow at ${width}px` },
   ).toBeLessThanOrEqual(1);
 
-  await expect(page.getByRole("button", { name: "Pause simulation" })).toBeVisible();
-  await expect(page.getByLabel("Stable architecture walkthrough")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Explore 6 gotchas/ })).toBeVisible();
+  await expect(page.getByLabel("Explore ClickHouse gotchas")).toBeVisible();
   await expect(page.getByRole("complementary", { name: "MergeTree workbench" })).toBeVisible();
   await expect(page.getByRole("button", { name: /10 use cases/ })).toHaveCount(0);
 
@@ -72,11 +72,12 @@ test.describe("responsive and interaction stress", () => {
     await expect(page.locator("canvas")).toBeVisible();
 
     for (let round = 0; round < 4; round += 1) {
-      await page.getByRole("button", { name: "Pause simulation" }).click();
-      await expect(page.getByRole("button", { name: "Play simulation" })).toBeVisible();
-      await page.getByRole("button", { name: "Play simulation" }).click();
-      await page.getByRole("button", { name: "Reset foundry" }).click();
-      await expect(page.getByLabel("Stable architecture walkthrough")).toContainText("Fit ClickHouse to my workload");
+      await page.getByRole("button", { name: /Explore 6 gotchas/ }).click();
+      await page.getByRole("button", { name: /Too many parts/ }).click();
+      await page.getByRole("button", { name: "Pause story" }).click();
+      await expect(page.getByRole("button", { name: "Play story" })).toBeVisible();
+      await page.getByRole("button", { name: "Healthy", exact: true }).click();
+      await expect(page.getByLabel("Explore ClickHouse gotchas")).toContainText("Explore 6 gotchas");
     }
 
     await page.waitForTimeout(500);
@@ -100,7 +101,7 @@ test.describe("responsive and interaction stress", () => {
       await expectHealthyWebGl(page);
     }
 
-    const guideBounds = await page.getByLabel("Stable architecture walkthrough").evaluate((element) => {
+    const guideBounds = await page.getByLabel("Explore ClickHouse gotchas").evaluate((element) => {
       const bounds = element.getBoundingClientRect();
       return { left: bounds.left, right: bounds.right };
     });
@@ -128,42 +129,22 @@ test.describe("responsive and interaction stress", () => {
     }) as {
       decisions: Array<{ mechanismId: string; title: string }>;
       mergeFamilyRecommendation: { familyId: string; latestReadStrategy: string };
-      visualGuide: { currentStep: string };
+      visualGuide: { currentStory: string; currentBeat: string };
+      gotchaJourney: Array<{ gotchaId: string; whyRelevant: string }>;
     };
 
-    expect(result.visualGuide.currentStep).toBe(result.decisions[0]?.mechanismId);
-    const guide = page.getByRole("complementary", { name: "Your ClickHouse architecture recommendation" });
+    expect(result.visualGuide.currentStory).toBe(result.gotchaJourney[0]?.gotchaId);
+    const guide = page.getByRole("complementary", { name: /story$/ });
     await expect(guide).toBeVisible();
-    await expect(guide).toContainText(result.decisions[0]!.title);
-    await expect(guide.getByText("CDC", { exact: true })).toBeVisible();
-    await expect(guide.getByText(/Use ClickPipes where the source is supported/)).toBeVisible();
+    await expect(guide).toContainText(result.gotchaJourney[0]!.whyRelevant);
+    await expect(guide.getByText("For your workload")).toBeVisible();
     await expect(page.locator(".family-workbench")).toHaveCount(0);
-    await expect(guide.getByRole("region", { name: "Recommended MergeTree storage and read contract" })).toContainText("ReplacingMergeTree");
-    await expect(guide.getByRole("region", { name: "Recommended MergeTree storage and read contract" })).toContainText("argMax current-state reads");
-
-    const progress = guide.getByRole("navigation", { name: "Recommendation steps" });
-    const slider = guide.getByRole("slider", { name: "Move through the recommended architecture" });
-    const stepCount = await progress.getByRole("button").count();
-    expect(stepCount).toBeGreaterThan(1);
-
-    await expect(progress.getByRole("button").first()).toHaveAttribute("data-active", "true");
-    await guide.getByRole("button", { name: "Next decision", exact: true }).click({ force: true });
-    await expect(progress.getByRole("button").nth(1)).toHaveAttribute("data-active", "true");
-    const partitionStepIndex = result.decisions.findIndex((entry) => entry.mechanismId === "mergetree.partition-boundary");
-    expect(partitionStepIndex).toBeGreaterThanOrEqual(0);
-    await progress.getByRole("button").nth(partitionStepIndex).click();
-    await expect(page.locator(".partition-boundary-label")).toContainText("PARTS NEVER MERGE ACROSS IT");
-    const sliderBounds = await slider.boundingBox();
-    expect(sliderBounds).not.toBeNull();
-    const startX = sliderBounds!.x + (partitionStepIndex / (stepCount - 1)) * sliderBounds!.width;
-    const y = sliderBounds!.y + sliderBounds!.height / 2;
-    await page.mouse.move(startX, y);
-    await page.mouse.down();
-    await page.mouse.move(sliderBounds!.x + sliderBounds!.width - 2, y, { steps: 12 });
-    await page.mouse.up();
-    await expect(progress.getByRole("button").last()).toHaveAttribute("data-active", "true");
-    await expect(page.locator(".inspector-shell")).toHaveCount(0);
-    await expect(guide.getByRole("button", { name: "Play the architecture", exact: true })).toBeVisible();
+    const rail = page.getByLabel(/story controls$/);
+    const slider = rail.getByRole("slider");
+    await slider.press("End");
+    await expect(rail.getByRole("button", { name: "Verify" })).toHaveAttribute("data-active", "true");
+    await expect(page.locator(".inspector-shell")).toHaveAttribute("aria-hidden", "true");
+    await expect(rail.getByRole("button", { name: "Play story" })).toBeVisible();
     await expectHealthyWebGl(page);
     monitor.expectClean();
   });

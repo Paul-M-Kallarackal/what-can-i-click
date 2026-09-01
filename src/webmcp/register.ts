@@ -1,12 +1,13 @@
 import { z } from "zod";
 import { COMPANY_EVIDENCE, searchEvidence } from "../data/evidence";
+import { GOTCHA_STORIES, gotchaStoryById, normalizedDiagnostics, recommendGotchaJourney, searchGotchaEvidence } from "../data/gotchas";
 import { COMPANY_ARCHITECTURE_RECIPES, companyArchitectureRecipeById, declaredRecipeReadStrategy } from "../data/companyArchitectureRecipes";
 import { COMPANY_IMPLEMENTATIONS, companyImplementationById, matchCompanyImplementations, type CompanyImplementation } from "../data/companyImplementations";
 import { DISTRICTS, MECHANISMS, mechanismById, searchMechanisms } from "../data/mechanisms";
 import { LATEST_READ_STRATEGIES, MERGE_FAMILIES, mergeFamilyById, mergeFamilySupportsReadStrategy } from "../data/mergeFamilies";
 import { recommendArchitecture, recommendMergeFamily, workloadProfileSchema } from "../lib/advisor";
 import { useAtlasStore } from "../store/useAtlasStore";
-import type { LatestReadStrategy, MechanismId, MergeFamilyId } from "../types";
+import type { GotchaBeatKind, GotchaId, LatestReadStrategy, MechanismId, MergeFamilyId } from "../types";
 
 type JsonSchema = Record<string, unknown>;
 
@@ -35,6 +36,11 @@ const implementationValues = COMPANY_IMPLEMENTATIONS.map((entry) => entry.id) as
 const implementationSchema = z.enum(implementationValues);
 const implementationJsonSchema = { enum: implementationValues };
 const emptySchema = { type: "object", additionalProperties: false };
+const gotchaValues = GOTCHA_STORIES.map((entry) => entry.id) as [GotchaId, ...GotchaId[]];
+const gotchaSchema = z.enum(gotchaValues);
+const gotchaJsonSchema = { enum: gotchaValues };
+const gotchaBeatValues = ["cause", "impact", "avoid", "verify"] as const;
+const gotchaBeatSchema = z.enum(gotchaBeatValues);
 
 const workloadJsonSchema: JsonSchema = {
   type: "object",
@@ -53,8 +59,27 @@ const workloadJsonSchema: JsonSchema = {
       enum: ["repeated-aggregation", "transform-or-route", "alternate-order", "transparent-acceleration", "none"],
       description: "Optional bounded intent for choosing an incremental materialized view, a projection, or no derived path.",
     },
+    deployment: { enum: ["cloud", "self-managed", "undecided"] },
+    insertPattern: { enum: ["batched", "many-small", "mixed", "unknown"] },
+    queryShape: { enum: ["range-filter", "high-cardinality-aggregate", "point-lookup", "join-heavy", "mixed"] },
+    partitionCardinality: { enum: ["low", "medium", "high", "unknown"] },
+    materializedViewFootprint: { enum: ["none", "few", "many", "unknown"] },
   },
 };
+
+function gotchaSummary(id: GotchaId) {
+  const story = gotchaStoryById(id)!;
+  return {
+    id: story.id,
+    title: story.title,
+    summary: story.summary,
+    consequence: story.consequence,
+    fourBeatModel: story.beats.map((beat) => ({ kind: beat.kind, heading: beat.heading, narration: beat.narration })),
+    mechanismIds: story.mechanismIds,
+    evidenceIds: story.evidenceIds,
+    source: story.sourceUrl,
+  };
+}
 
 function mechanismSummary(id: MechanismId) {
   const mechanism = mechanismById(id);
@@ -149,7 +174,7 @@ export function createToolDefinitions(): ToolDefinition[] {
     {
       name: "describe_clickhouse_world",
       title: "Describe the interactive ClickHouse foundry",
-      description: `Return seven MergeTree family machines, ${DISTRICTS.length} ClickHouse system chambers, ${MECHANISMS.length} inspectable mechanisms, reviewed company architecture recipes, operational scenarios, semantic states, and the safe interaction model.`,
+      description: `Return the healthy MergeTree foundry, six four-beat gotcha stories, ${MECHANISMS.length} inspectable mechanisms, reviewed evidence, and the safe manual and agent interaction model.`,
       inputSchema: emptySchema,
       annotations: { readOnlyHint: true, untrustedContentHint: false },
       execute: async (input) => {
@@ -161,6 +186,7 @@ export function createToolDefinitions(): ToolDefinition[] {
           mechanisms: MECHANISMS.map((entry) => ({ id: entry.id, districtId: entry.districtId, title: entry.title, tempo: entry.tempo, states: entry.states })),
           mergeTreeFamilies: MERGE_FAMILIES.map((entry) => mergeFamilySummary(entry.id)),
           latestReadStrategies: LATEST_READ_STRATEGIES,
+          gotchaStories: GOTCHA_STORIES.map((story) => gotchaSummary(story.id)),
           evidenceCorpus: {
             stories: COMPANY_EVIDENCE.length,
             implementationAccounts: COMPANY_IMPLEMENTATIONS.length,
@@ -168,8 +194,10 @@ export function createToolDefinitions(): ToolDefinition[] {
           },
           views: ["system", "mechanism", "xray"],
           experience: {
-            mode: "stable-architecture-guidance",
-            purpose: "Turn a bounded workload description into a healthy ClickHouse architecture and explain each choice in the 3D world.",
+            mode: "gotcha-guided-architecture",
+            purpose: "Visualize common ClickHouse failure modes, then assemble a workload-specific journey that shows how to avoid and verify them.",
+            storyModel: ["cause", "impact", "avoid", "verify"],
+            manualFallback: "Every gotcha can be opened, scrubbed, inspected, and reset without WebMCP.",
             userCanAsk: [
               "Which MergeTree family fits my update model?",
               "How should I batch and ingest this workload?",
@@ -191,26 +219,28 @@ export function createToolDefinitions(): ToolDefinition[] {
         if (options?.signal?.aborted) throw options.signal.reason;
         const profile = workloadProfileSchema.parse(input);
         const recommendation = recommendArchitecture(profile);
+        const gotchaJourney = recommendGotchaJourney(profile);
         const mergeFamilyRecommendation = recommendMergeFamily(profile);
         const store = useAtlasStore.getState();
         store.setMergeFamily(mergeFamilyRecommendation.familyId);
         store.setLatestReadStrategy(mergeFamilyRecommendation.latestReadStrategy);
         store.setRecommendation(recommendation, profile);
+        store.setGotchaRecommendations(gotchaJourney);
+        if (gotchaJourney[0]) store.startGotcha(gotchaJourney[0].gotchaId);
         return {
           ...recommendation,
+          gotchaJourney,
+          assumptions: normalizedDiagnostics(profile),
           mergeFamilyRecommendation: { ...mergeFamilyRecommendation, family: mergeFamilySummary(mergeFamilyRecommendation.familyId) },
           visualGuide: {
-            panel: "open",
-            currentStep: recommendation.decisions[0]?.mechanismId ?? null,
-            steps: recommendation.decisions.map((entry) => ({
-              mechanismId: entry.mechanismId,
-              title: entry.title,
-              confidence: entry.confidence,
-            })),
+            panel: "gotcha-story",
+            currentStory: gotchaJourney[0]?.gotchaId ?? null,
+            currentBeat: "cause",
+            stories: gotchaJourney.map((entry) => ({ gotchaId: entry.gotchaId, whyRelevant: entry.whyRelevant, confidence: entry.confidence })),
           },
           userGuide: {
-            mode: "stable-architecture",
-            outcome: "The exact workload recommendation is open in the site, visible mechanism by mechanism, with alternatives, tradeoffs, evidence, and production validation steps.",
+            mode: "personalized-gotcha-journey",
+            outcome: "The highest-priority failure mode is open in the 3D world. The journey contains three to five distinct gotchas with an avoid and verify contract for this workload.",
             nextActions: recommendation.validationSteps.slice(0, 5),
           },
         };
@@ -218,12 +248,16 @@ export function createToolDefinitions(): ToolDefinition[] {
     },
     {
       name: "play_architecture_story",
-      title: "Walk through a stable architecture",
-      description: "Animate the latest healthy recommendation or one reviewed company's declared architecture through its exact mechanism path.",
-      inputSchema: { type: "object", additionalProperties: false, properties: { implementationId: implementationJsonSchema } },
+      title: "Play a ClickHouse architecture story",
+      description: "Animate one reviewed gotcha, the latest personalized gotcha journey, or one reviewed company's declared architecture.",
+      inputSchema: { type: "object", additionalProperties: false, properties: { implementationId: implementationJsonSchema, gotchaId: gotchaJsonSchema } },
       annotations: { readOnlyHint: false, untrustedContentHint: false },
       execute: async (input) => {
-        const { implementationId } = z.object({ implementationId: implementationSchema.optional() }).strict().parse(input);
+        const { implementationId, gotchaId } = z.object({ implementationId: implementationSchema.optional(), gotchaId: gotchaSchema.optional() }).strict().refine((value) => !(value.implementationId && value.gotchaId), "Choose either an implementation or a gotcha.").parse(input);
+        if (gotchaId) {
+          useAtlasStore.getState().startGotcha(gotchaId);
+          return { ok: true, mode: "gotcha-story", story: gotchaSummary(gotchaId), currentBeat: "cause" };
+        }
         if (implementationId) {
           const implementation = companyImplementationById(implementationId)!;
           const recipe = companyArchitectureRecipeById(implementationId)!;
@@ -235,6 +269,11 @@ export function createToolDefinitions(): ToolDefinition[] {
           useAtlasStore.getState().setJourneyPanelOpen(false);
           useAtlasStore.getState().playStory("architecture", recipe.mechanismPath);
           return { ok: true, mode: "stable-architecture", story: "company-architecture", implementation: implementationSummary(implementation) };
+        }
+        const gotchaJourney = useAtlasStore.getState().gotchaRecommendations;
+        if (gotchaJourney[0]) {
+          useAtlasStore.getState().startGotcha(gotchaJourney[0].gotchaId);
+          return { ok: true, mode: "personalized-gotcha-journey", stories: gotchaJourney, currentStory: gotchaJourney[0].gotchaId, currentBeat: "cause" };
         }
         const recommendation = useAtlasStore.getState().recommendation;
         if (!recommendation) return { ok: false, message: "Create a recommendation first." };
@@ -254,17 +293,23 @@ export function createToolDefinitions(): ToolDefinition[] {
     {
       name: "inspect_clickhouse_mechanism",
       title: "Inspect a ClickHouse mechanism",
-      description: "Focus a reviewed system mechanism or MergeTree family machine. Supported families can also select a bounded background, argMax, or FINAL read contract.",
-      inputSchema: { type: "object", additionalProperties: false, anyOf: [{ required: ["mechanismId"] }, { required: ["mergeFamilyId"] }], properties: { mechanismId: mechanismJsonSchema, mergeFamilyId: mergeFamilyJsonSchema, latestReadStrategy: { enum: latestReadValues }, view: { enum: ["mechanism", "xray"] } } },
+      description: "Focus a reviewed system mechanism, MergeTree family machine, or one of six gotchas at an optional cause, impact, avoid, or verify beat.",
+      inputSchema: { type: "object", additionalProperties: false, anyOf: [{ required: ["mechanismId"] }, { required: ["mergeFamilyId"] }, { required: ["gotchaId"] }], properties: { mechanismId: mechanismJsonSchema, mergeFamilyId: mergeFamilyJsonSchema, gotchaId: gotchaJsonSchema, beat: { enum: gotchaBeatValues }, latestReadStrategy: { enum: latestReadValues }, view: { enum: ["mechanism", "xray"] } } },
       annotations: { readOnlyHint: false, untrustedContentHint: false },
       execute: async (input) => {
-        const args = z.object({ mechanismId: mechanismSchema.optional(), mergeFamilyId: mergeFamilySchema.optional(), latestReadStrategy: latestReadSchema.optional(), view: z.enum(["mechanism", "xray"]).optional() }).strict().superRefine((value, context) => {
-          if (Boolean(value.mechanismId) === Boolean(value.mergeFamilyId)) context.addIssue({ code: "custom", message: "Provide exactly one of mechanismId or mergeFamilyId." });
+        const args = z.object({ mechanismId: mechanismSchema.optional(), mergeFamilyId: mergeFamilySchema.optional(), gotchaId: gotchaSchema.optional(), beat: gotchaBeatSchema.optional(), latestReadStrategy: latestReadSchema.optional(), view: z.enum(["mechanism", "xray"]).optional() }).strict().superRefine((value, context) => {
+          if (Number(Boolean(value.mechanismId)) + Number(Boolean(value.mergeFamilyId)) + Number(Boolean(value.gotchaId)) !== 1) context.addIssue({ code: "custom", message: "Provide exactly one of mechanismId, mergeFamilyId, or gotchaId." });
           if (value.latestReadStrategy && !value.mergeFamilyId) context.addIssue({ code: "custom", message: "latestReadStrategy is only valid with mergeFamilyId." });
+          if (value.beat && !value.gotchaId) context.addIssue({ code: "custom", message: "beat is only valid with gotchaId." });
           if (value.mergeFamilyId && value.latestReadStrategy && !mergeFamilySupportsReadStrategy(value.mergeFamilyId, value.latestReadStrategy)) {
             context.addIssue({ code: "custom", message: `${value.latestReadStrategy} is not a reviewed read contract for ${value.mergeFamilyId}.` });
           }
         }).parse(input);
+        if (args.gotchaId) {
+          const beatIndex = gotchaBeatValues.indexOf((args.beat ?? "cause") as GotchaBeatKind);
+          useAtlasStore.getState().startGotcha(args.gotchaId, beatIndex);
+          return { ok: true, view: "gotcha-story", story: gotchaSummary(args.gotchaId), currentBeat: args.beat ?? "cause" };
+        }
         if (args.mergeFamilyId) {
           const resolvedStrategy = args.latestReadStrategy ?? "background";
           const store = useAtlasStore.getState();
@@ -294,7 +339,7 @@ export function createToolDefinitions(): ToolDefinition[] {
         properties: {
           firstId: mechanismJsonSchema,
           secondId: mechanismJsonSchema,
-          comparison: { enum: ["argmax-vs-final", "materialized-view-vs-projection"] },
+          comparison: { enum: ["argmax-vs-final", "materialized-view-vs-projection", "vertical-vs-horizontal-scaling", "classic-mutation-vs-patch-update", "incremental-vs-refreshable-view"] },
           firstImplementationId: implementationJsonSchema,
           secondImplementationId: implementationJsonSchema,
         },
@@ -304,7 +349,7 @@ export function createToolDefinitions(): ToolDefinition[] {
         const args = z.object({
           firstId: mechanismSchema.optional(),
           secondId: mechanismSchema.optional(),
-          comparison: z.enum(["argmax-vs-final", "materialized-view-vs-projection"]).optional(),
+          comparison: z.enum(["argmax-vs-final", "materialized-view-vs-projection", "vertical-vs-horizontal-scaling", "classic-mutation-vs-patch-update", "incremental-vs-refreshable-view"]).optional(),
           firstImplementationId: implementationSchema.optional(),
           secondImplementationId: implementationSchema.optional(),
         }).strict().superRefine((value, context) => {
@@ -338,6 +383,21 @@ export function createToolDefinitions(): ToolDefinition[] {
           const store = useAtlasStore.getState();
           store.stopJourney();
           store.setScenario("healthy");
+          if (args.comparison === "vertical-vs-horizontal-scaling") {
+            store.startGotcha("scale-coordination", 2);
+            store.setComparison("architecture.vertical-scaling", "architecture.sharding");
+            return { ok: true, comparison: args.comparison, view: "gotcha-story", story: gotchaSummary("scale-coordination"), first: mechanismSummary("architecture.vertical-scaling"), second: mechanismSummary("architecture.sharding") };
+          }
+          if (args.comparison === "classic-mutation-vs-patch-update") {
+            store.startGotcha("updates-deduplication", 2);
+            store.setComparison("retention.mutation", "retention.patch-update");
+            return { ok: true, comparison: args.comparison, view: "gotcha-story", story: gotchaSummary("updates-deduplication"), first: mechanismSummary("retention.mutation"), second: mechanismSummary("retention.patch-update") };
+          }
+          if (args.comparison === "incremental-vs-refreshable-view") {
+            store.startGotcha("materialized-view-traps", 2);
+            store.setComparison("precompute.materialized-view", "precompute.refreshable-view");
+            return { ok: true, comparison: args.comparison, view: "gotcha-story", story: gotchaSummary("materialized-view-traps"), first: mechanismSummary("precompute.materialized-view"), second: mechanismSummary("precompute.refreshable-view") };
+          }
           if (args.comparison === "argmax-vs-final") {
             store.setMergeFamily("replacing");
             store.setLatestReadStrategy("argmax");
@@ -367,7 +427,7 @@ export function createToolDefinitions(): ToolDefinition[] {
     {
       name: "search_clickhouse_evidence",
       title: "Search reviewed ClickHouse evidence",
-      description: `Search ${MECHANISMS.length} reviewed mechanisms, the original ten-story set, and ${COMPANY_IMPLEMENTATIONS.length} primary-source company implementation accounts. Results are bounded and versions are never inferred.`,
+      description: `Search ${MECHANISMS.length} reviewed mechanisms, six hero gotchas, the official common-mistakes article, and ${COMPANY_IMPLEMENTATIONS.length} primary-source company implementation accounts. Results are bounded and versions are never inferred.`,
       inputSchema: { type: "object", additionalProperties: false, required: ["query"], properties: { query: { type: "string", minLength: 2, maxLength: 80 } } },
       annotations: { readOnlyHint: true, untrustedContentHint: true },
       execute: async (input) => {
@@ -378,7 +438,9 @@ export function createToolDefinitions(): ToolDefinition[] {
             stories: COMPANY_EVIDENCE.length,
             implementationAccounts: COMPANY_IMPLEMENTATIONS.length,
             architectureRecipes: COMPANY_ARCHITECTURE_RECIPES.length,
+            gotchaStories: GOTCHA_STORIES.length,
           },
+          gotchas: searchGotchaEvidence(query).slice(0, 6).map((story) => gotchaSummary(story.id)),
           mechanisms: searchMechanisms(query).slice(0, 12).map((entry) => ({ id: entry.id, districtId: entry.districtId, title: entry.title, tagline: entry.tagline, tempo: entry.tempo })),
           mergeTreeFamilies: MERGE_FAMILIES.filter((entry) => `${entry.title} ${entry.shortTitle} ${entry.analogy} ${entry.useWhen}`.toLowerCase().includes(query.toLowerCase())).slice(0, 7).map((entry) => mergeFamilySummary(entry.id)),
           stories: searchEvidence(query).slice(0, 10).map((entry) => ({ id: entry.id, company: entry.company, workload: entry.workload, challenge: entry.challenge, outcome: entry.outcome, version: entry.version, source: entry.source })),
@@ -395,7 +457,7 @@ export function createToolDefinitions(): ToolDefinition[] {
       execute: async (input) => {
         z.object({}).strict().parse(input);
         useAtlasStore.getState().reset();
-        return { ok: true, chambers: DISTRICTS.length, mechanisms: MECHANISMS.length, stories: COMPANY_EVIDENCE.length };
+        return { ok: true, baseline: "healthy-merge-tree", chambers: DISTRICTS.length, mechanisms: MECHANISMS.length, stories: COMPANY_EVIDENCE.length, gotchas: GOTCHA_STORIES.length };
       },
     },
   ];
@@ -404,14 +466,23 @@ export function createToolDefinitions(): ToolDefinition[] {
 export function registerWebMcpTools() {
   if (!document.modelContext) {
     document.documentElement.dataset.webmcp = "unavailable";
+    document.documentElement.dataset.webmcpCount = "0";
     return () => undefined;
   }
   document.documentElement.dataset.webmcp = "available";
+  document.documentElement.dataset.webmcpCount = "0";
   const controller = new AbortController();
+  let registeredCount = 0;
   for (const tool of createToolDefinitions()) {
-    Promise.resolve(document.modelContext.registerTool(tool, { signal: controller.signal })).catch((error) => {
-      if (!controller.signal.aborted) console.warn(`WebMCP tool ${tool.name} was not registered.`, error);
-    });
+    Promise.resolve(document.modelContext.registerTool(tool, { signal: controller.signal }))
+      .then(() => {
+        if (controller.signal.aborted) return;
+        registeredCount += 1;
+        document.documentElement.dataset.webmcpCount = String(registeredCount);
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) console.warn(`WebMCP tool ${tool.name} was not registered.`, error);
+      });
   }
   return () => controller.abort();
 }

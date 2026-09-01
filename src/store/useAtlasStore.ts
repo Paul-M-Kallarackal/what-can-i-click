@@ -3,7 +3,7 @@ import { LIFECYCLE_PATH, mechanismById } from "../data/mechanisms";
 import { operationalScenarioById } from "../data/operationalScenarios";
 import { resolveJourneyGuideStep, useCaseJourneyById } from "../data/useCaseJourneys";
 import { eventsForStory, nextEventTime } from "../lib/simulation";
-import type { ArchitectureRecommendation, LatestReadStrategy, MechanismId, MergeFamilyId, ScenarioMode, SimulationEvent, StoryMode, ViewLevel, WorkloadProfile } from "../types";
+import type { ArchitectureRecommendation, GotchaId, GotchaRecommendation, LatestReadStrategy, MechanismId, MergeFamilyId, ScenarioMode, SimulationEvent, StoryMode, ViewLevel, WorkloadProfile } from "../types";
 
 type InspectorSnap = "peek" | "full";
 
@@ -39,6 +39,10 @@ type AtlasState = {
   activeJourneyId: string | null;
   journeyStepIndex: number;
   inspectorSnap: InspectorSnap;
+  activeGotchaId: GotchaId | null;
+  gotchaBeatIndex: number;
+  gotchaShelfOpen: boolean;
+  gotchaRecommendations: GotchaRecommendation[];
   selectMechanism: (id: MechanismId | null, level?: ViewLevel) => void;
   selectEvidence: (id: string | null) => void;
   setEvidenceComparison: (id: string | null) => void;
@@ -74,6 +78,11 @@ type AtlasState = {
   stopJourney: () => void;
   setJourneyStep: (index: number) => void;
   setInspectorSnap: (snap: InspectorSnap) => void;
+  setGotchaShelfOpen: (open: boolean) => void;
+  startGotcha: (id: GotchaId, beatIndex?: number) => void;
+  setGotchaBeat: (index: number) => void;
+  closeGotcha: () => void;
+  setGotchaRecommendations: (recommendations: GotchaRecommendation[]) => void;
   reset: () => void;
 };
 
@@ -109,6 +118,10 @@ const initial = {
   activeJourneyId: null as string | null,
   journeyStepIndex: 0,
   inspectorSnap: "peek" as InspectorSnap,
+  activeGotchaId: null as GotchaId | null,
+  gotchaBeatIndex: 0,
+  gotchaShelfOpen: false,
+  gotchaRecommendations: [] as GotchaRecommendation[],
 };
 
 export const useAtlasStore = create<AtlasState>((set, get) => ({
@@ -294,6 +307,27 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
     };
   }),
   setInspectorSnap: (inspectorSnap) => set({ inspectorSnap }),
+  setGotchaShelfOpen: (gotchaShelfOpen) => set({ gotchaShelfOpen }),
+  startGotcha: (activeGotchaId, requestedIndex = 0) => set({
+    activeGotchaId,
+    gotchaBeatIndex: Math.min(3, Math.max(0, requestedIndex)),
+    gotchaShelfOpen: false,
+    selectedMechanismId: null,
+    selectedEvidenceId: null,
+    evidenceComparisonId: null,
+    selectedTidbitId: null,
+    comparisonIds: null,
+    latestReadComparison: null,
+    viewLevel: "system",
+    scenario: "healthy",
+    simulationTime: 0,
+    playing: true,
+    journeyPanelOpen: false,
+    inspectorSnap: "peek",
+  }),
+  setGotchaBeat: (requestedIndex) => set({ gotchaBeatIndex: Math.min(3, Math.max(0, requestedIndex)), simulationTime: 0 }),
+  closeGotcha: () => set({ activeGotchaId: null, gotchaBeatIndex: 0, gotchaShelfOpen: false, selectedMechanismId: null, viewLevel: "system", scenario: "healthy", simulationTime: 0, playing: true }),
+  setGotchaRecommendations: (gotchaRecommendations) => set({ gotchaRecommendations }),
   reset: () => set({ ...initial, storyRevision: get().storyRevision + 1, reducedMotion: get().reducedMotion }),
 }));
 

@@ -22,6 +22,7 @@ export type MechanismId =
   | "ingestion.clickpipes"
   | "ingestion.cdc"
   | "ingestion.backpressure"
+  | "ingestion.retry-deduplication"
   | "mergetree.part-anatomy"
   | "mergetree.partition-boundary"
   | "mergetree.merge-selection"
@@ -36,11 +37,13 @@ export type MechanismId =
   | "read.data-skipping"
   | "read.parallel-pipeline"
   | "read.saved-work"
+  | "read.limit-short-circuit"
   | "precompute.materialized-view"
   | "precompute.aggregate-states"
   | "precompute.projection"
   | "precompute.optimizer-choice"
   | "precompute.write-amplification"
+  | "precompute.refreshable-view"
   | "architecture.sharding"
   | "architecture.distributed-query"
   | "architecture.replication"
@@ -48,11 +51,13 @@ export type MechanismId =
   | "architecture.failure"
   | "architecture.recovery"
   | "architecture.multi-region"
+  | "architecture.vertical-scaling"
   | "retention.ttl-delete"
   | "retention.ttl-move"
   | "retention.ttl-recompress"
   | "retention.ttl-aggregate"
   | "retention.mutation"
+  | "retention.patch-update"
   | "retention.backup"
   | "retention.restore"
   | "memory.os-page-cache"
@@ -120,6 +125,72 @@ export type WorkloadProfile = {
   topology: "single-region" | "multi-region";
   costPriority: "performance" | "balanced" | "cost";
   accelerationGoal?: "repeated-aggregation" | "transform-or-route" | "alternate-order" | "transparent-acceleration" | "none";
+  deployment?: "cloud" | "self-managed" | "undecided";
+  insertPattern?: "batched" | "many-small" | "mixed" | "unknown";
+  queryShape?: "range-filter" | "high-cardinality-aggregate" | "point-lookup" | "join-heavy" | "mixed";
+  partitionCardinality?: "low" | "medium" | "high" | "unknown";
+  materializedViewFootprint?: "none" | "few" | "many" | "unknown";
+};
+
+export type GotchaId =
+  | "parts-pressure"
+  | "scale-coordination"
+  | "updates-deduplication"
+  | "read-path-surprises"
+  | "memory-pressure"
+  | "materialized-view-traps";
+
+export type GotchaBeatKind = "cause" | "impact" | "avoid" | "verify";
+
+export type GotchaMetric = {
+  label: string;
+  value: string;
+  tone?: "neutral" | "good" | "warning";
+};
+
+export type GotchaLegendItem = {
+  label: string;
+  color: string;
+};
+
+export type GotchaBeat = {
+  kind: GotchaBeatKind;
+  heading: string;
+  narration: string;
+  cameraPose: CameraPose;
+  eventIds: string[];
+  metrics: GotchaMetric[];
+  legend: GotchaLegendItem[];
+  guidance: string;
+  productionCheck: string;
+};
+
+export type GotchaStory = {
+  id: GotchaId;
+  index: number;
+  category: string;
+  title: string;
+  summary: string;
+  consequence: string;
+  sourceSectionNumbers: number[];
+  primaryMechanismId: MechanismId;
+  mechanismIds: MechanismId[];
+  beats: [GotchaBeat, GotchaBeat, GotchaBeat, GotchaBeat];
+  evidenceIds: string[];
+  sourceUrl: string;
+  tradeoff: string;
+  reducedMotionSummary: string;
+};
+
+export type GotchaRecommendation = {
+  gotchaId: GotchaId;
+  whyRelevant: string;
+  selectedVariant: string;
+  recommendation: string;
+  tradeoff: string;
+  validationSteps: string[];
+  confidence: "high" | "medium";
+  evidenceIds: string[];
 };
 
 export type EvidenceReference = { id: string; label: string; url: string; kind: EvidenceKind };

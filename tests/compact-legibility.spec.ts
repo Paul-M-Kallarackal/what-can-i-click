@@ -13,7 +13,7 @@ test("keeps the healthy MergeTree baseline readable at compact desktop heights",
     await expect(workbench.getByRole("heading", { name: "MergeTree" })).toBeVisible();
     await expect(baseline).toContainText("Healthy MergeTree flow");
     await expect(baseline).toContainText("What you are seeing");
-    await expect(page.getByLabel("Stable architecture walkthrough")).toContainText("Fit ClickHouse to my workload");
+    await expect(page.getByLabel("Explore ClickHouse gotchas")).toContainText("Explore 6 gotchas");
     await expect(page.getByRole("textbox", { name: "Search mechanisms and evidence" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /10 use cases/ })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Open accessible system map" })).toHaveCount(0);

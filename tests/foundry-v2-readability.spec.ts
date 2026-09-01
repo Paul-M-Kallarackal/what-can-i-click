@@ -22,7 +22,7 @@ test("keeps the white MergeTree foundry and stable agent handoff legible", async
       const read = (selector: string) => Number.parseFloat(getComputedStyle(element.querySelector<HTMLElement>(selector)!).fontSize);
       const panel = element.getBoundingClientRect();
       const controls = document.querySelector<HTMLElement>(".simulation-dock")!.getBoundingClientRect();
-      const guide = document.querySelector<HTMLElement>(".stable-guide")!;
+      const guide = document.querySelector<HTMLElement>(".gotcha-entry")!;
       return {
         background: getComputedStyle(document.querySelector<HTMLElement>(".app-shell")!).backgroundColor,
         heading: read(".merge-title-row h1"),
@@ -45,7 +45,7 @@ test("keeps the white MergeTree foundry and stable agent handoff legible", async
     expect(metrics.horizontalOverflow).toBe(false);
     expect(metrics.insideViewport).toBe(true);
     expect(metrics.aboveControls).toBe(true);
-    await expect(page.getByLabel("Stable architecture walkthrough")).toContainText("Fit ClickHouse to my workload");
+    await expect(page.getByLabel("Explore ClickHouse gotchas")).toContainText("Explore 6 gotchas");
   }
 
   expect(browserErrors).toEqual([]);

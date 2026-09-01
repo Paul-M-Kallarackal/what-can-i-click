@@ -3,10 +3,10 @@ import { COMPANY_EVIDENCE } from "./evidence";
 import { DISTRICTS, MECHANISMS } from "./mechanisms";
 
 describe("reviewed ClickHouse knowledge world", () => {
-  it("ships eleven districts and all 65 inspectable ClickHouse mechanisms", () => {
+  it("ships eleven districts and all 70 inspectable ClickHouse mechanisms", () => {
     expect(DISTRICTS).toHaveLength(11);
-    expect(MECHANISMS).toHaveLength(65);
-    expect(new Set(MECHANISMS.map((mechanism) => mechanism.id)).size).toBe(65);
+    expect(MECHANISMS).toHaveLength(70);
+    expect(new Set(MECHANISMS.map((mechanism) => mechanism.id)).size).toBe(70);
 
     for (const mechanism of MECHANISMS) {
       expect(mechanism.claims.length).toBeGreaterThan(0);

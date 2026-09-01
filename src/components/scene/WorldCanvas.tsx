@@ -7,6 +7,7 @@ import { useCaseJourneyById, type GuidePhase } from "../../data/useCaseJourneys"
 import { eventIndexAtTime, storyDuration } from "../../lib/simulation";
 import { useAtlasStore } from "../../store/useAtlasStore";
 import type { LatestReadStrategy, MechanismId, MergeFamilyId, ScenarioMode } from "../../types";
+import { GotchaVisualization } from "./GotchaScenes";
 import {
   aggregatingStateFrame,
   aggregationSpillFrame,
@@ -3719,13 +3720,17 @@ function MergeTreeFoundry({ mobile }: { mobile: boolean }) {
   const family = useAtlasStore((state) => state.mergeFamilyId);
   const strategy = useAtlasStore((state) => state.latestReadStrategy);
   const recommendationOpen = useAtlasStore((state) => Boolean(state.recommendation) && state.journeyPanelOpen && !state.activeJourneyId);
+  const activeGotchaId = useAtlasStore((state) => state.activeGotchaId);
+  const gotchaBeatIndex = useAtlasStore((state) => state.gotchaBeatIndex);
   const exploded = selected === "mergetree.part-anatomy" && viewLevel === "xray";
   const mergeVisual = mergeTreeVisualMode(selected, viewLevel);
   const recommendationVisual = recommendationGotchaVisual(selected, recommendationOpen);
-  const pressure = scenario !== "healthy" || selected === "mergetree.parts-pressure" || selected === "mergetree.forced-merge";
+  const pressure = (Boolean(activeGotchaId) && gotchaBeatIndex < 2) || scenario !== "healthy" || selected === "mergetree.parts-pressure" || selected === "mergetree.forced-merge";
   const district = selected ? mechanismById(selected)?.districtId : null;
-  const showMergeTreeLandmark = scenario === "healthy" && mergeVisual === "family" && (!selected || district === "mergetree");
-  const activeMachine = scenario === "merge-ttl-contention"
+  const showMergeTreeLandmark = !activeGotchaId && scenario === "healthy" && mergeVisual === "family" && (!selected || district === "mergetree");
+  const activeMachine = activeGotchaId
+    ? <GotchaVisualization id={activeGotchaId} beatIndex={gotchaBeatIndex} />
+    : scenario === "merge-ttl-contention"
     ? <BackgroundContentionVisualization />
     : scenario === "bad-order-by"
       ? <BadOrderingVisualization />
@@ -3791,6 +3796,7 @@ function CameraRig({ viewport }: { viewport: SceneViewport }) {
   const selectedEvidence = useAtlasStore((state) => state.selectedEvidenceId);
   const journeyPanelOpen = useAtlasStore((state) => state.journeyPanelOpen);
   const activeJourneyId = useAtlasStore((state) => state.activeJourneyId);
+  const activeGotchaId = useAtlasStore((state) => state.activeGotchaId);
   const journeyStepIndex = useAtlasStore((state) => state.journeyStepIndex);
   const reducedMotion = useAtlasStore((state) => state.reducedMotion);
   const activeJourney = activeJourneyId ? useCaseJourneyById(activeJourneyId) : undefined;
@@ -3815,7 +3821,7 @@ function CameraRig({ viewport }: { viewport: SceneViewport }) {
       desiredTarget.current.set(0.35, viewport.compact ? 1.85 : 2.05, 0);
     } else {
       desiredPosition.current.set(viewport.narrow ? 10.4 : 10.9, viewport.compact ? 7.5 : 7.8, viewport.narrow ? 14.8 : 15.6);
-      const framingTargetX = journeyPanelOpen ? 3.75 : scenario === "aggregation-spill" || scenario === "replica-lag" || scenario === "keeper-quorum-loss" ? 3.05 : selectedEvidence ? 2.15 : selected ? 2.1 : viewport.narrow ? -0.35 : -0.9;
+      const framingTargetX = journeyPanelOpen ? 3.75 : activeGotchaId ? 2.15 : scenario === "aggregation-spill" || scenario === "replica-lag" || scenario === "keeper-quorum-loss" ? 3.05 : selectedEvidence ? 2.15 : selected ? 2.1 : viewport.narrow ? -0.35 : -0.9;
       desiredTarget.current.set(framingTargetX, journeyCameraHeight ?? (viewport.compact ? 3.15 : 2.75), 0);
     }
     const damping = journeyPanelOpen && activeJourneyStep ? 8.5 : 3.4;

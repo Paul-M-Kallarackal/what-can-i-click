@@ -10,11 +10,11 @@ test.describe("single MergeTree workbench responsiveness", () => {
       await page.goto("/", { waitUntil: "domcontentloaded" });
 
       const workbench = page.getByRole("complementary", { name: "MergeTree workbench" });
-      const stableGuide = page.getByLabel("Stable architecture walkthrough");
+      const stableGuide = page.getByLabel("Explore ClickHouse gotchas");
       await expect(workbench).toBeVisible();
       await expect(workbench.getByRole("heading", { name: "MergeTree" })).toBeVisible();
       await expect(workbench.getByText(mergeTree.shortTitle, { exact: true })).toBeVisible();
-      await expect(stableGuide).toContainText("Fit ClickHouse to my workload");
+      await expect(stableGuide).toContainText("Explore 6 gotchas");
       await expect(page.locator(".world-canvas canvas")).toBeVisible();
       await expect(page.getByRole("menu", { name: "ClickHouse operational scenarios" })).toHaveCount(0);
 
@@ -42,10 +42,10 @@ test.describe("single MergeTree workbench responsiveness", () => {
     await page.goto("/", { waitUntil: "domcontentloaded" });
 
     const workbench = page.getByRole("complementary", { name: "MergeTree workbench" });
-    const stableGuide = page.getByLabel("Stable architecture walkthrough");
+    const stableGuide = page.getByLabel("Explore ClickHouse gotchas");
     await expect(workbench).toBeVisible();
-    await expect(stableGuide).toContainText("Ask your agent");
-    await expect(stableGuide).toContainText("Fit ClickHouse to my workload");
+    await expect(stableGuide).toContainText("or ask your agent");
+    await expect(stableGuide).toContainText("Explore 6 gotchas");
     await expect(page.getByRole("menu", { name: "ClickHouse operational scenarios" })).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
   });

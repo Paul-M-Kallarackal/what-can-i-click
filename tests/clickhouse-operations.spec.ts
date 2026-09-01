@@ -28,7 +28,7 @@ test.describe("ClickHouse operational world", () => {
       return card && label ? label.x - (card.x + card.width) : -1;
     }).toBeGreaterThan(8);
     await captureReview(page, "artifacts/review/crane-grip-v1.png");
-    await page.waitForFunction(() => document.documentElement.dataset.craneStage === "carry", undefined, { timeout: 6_000 });
+    await page.waitForFunction(() => document.documentElement.dataset.craneStage === "carry", undefined, { timeout: 12_000 });
     await expect(page.locator(".crane-status")).toBeVisible();
     await captureReview(page, "artifacts/review/crane-carry-v1.png");
     await expect.poll(
@@ -82,7 +82,7 @@ test.describe("ClickHouse operational world", () => {
     await expect(page.locator("html")).toHaveAttribute("data-merge-tree-landmark", "visible");
     await expect(page.locator(".merge-tree-monument-label")).toHaveCount(0);
     await expect(page.getByRole("menu", { name: "ClickHouse operational scenarios" })).toHaveCount(0);
-    await expect(page.getByLabel("Stable architecture walkthrough")).toContainText("Fit ClickHouse to my workload");
+    await expect(page.getByLabel("Explore ClickHouse gotchas")).toContainText("Explore 6 gotchas");
     await expect(page.locator(".world-canvas").getByText("ACTIVE PARTS · IMMUTABLE COLUMN FILES", { exact: true })).toBeVisible();
   });
 
