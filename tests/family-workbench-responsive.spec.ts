@@ -10,7 +10,7 @@ test.describe("single MergeTree workbench responsiveness", () => {
       const scenarioButton = page.getByRole("button", { name: "Scenario Steady" });
       await expect(workbench).toBeVisible();
       await expect(workbench.getByRole("heading", { name: "MergeTree" })).toBeVisible();
-      await expect(workbench.getByText("append-only facts", { exact: true })).toBeVisible();
+      await expect(workbench.getByText("Append-only facts", { exact: true })).toBeVisible();
       await expect(scenarioButton).toBeVisible();
       await expect(page.locator(".world-canvas canvas")).toBeVisible();
       await expect(workbench.getByRole("tab")).toHaveCount(0);
