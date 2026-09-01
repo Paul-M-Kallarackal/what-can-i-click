@@ -2,6 +2,8 @@
 
 An open-source, WebMCP-enabled visual guide to ClickHouse architecture.
 
+Live site: [what-can-i-click.moriatz.com](https://what-can-i-click.moriatz.com)
+
 What can I Click makes ClickHouse gotchas visible. Its interactive 3D foundry shows how tiny inserts, excessive parts, poor ordering keys, expensive reads, competing background work, mutations, and replication failures change the system.
 
 WebMCP makes those lessons specific to a visitor's workload. A WebMCP-capable agent can select the relevant reviewed mechanisms, recommend safer patterns, explain tradeoffs, and return validation steps without executing SQL or reading a private cluster.
@@ -115,7 +117,7 @@ CI runs the same checks on pushes and pull requests. CodeQL, Dependabot, least-p
 - The app is static and has no account system, database, analytics SDK, or private-cluster ingestion.
 - No API keys are required or supported by the browser application.
 - `.env*`, `.dev.vars`, Wrangler state, credentials, private keys, and build artifacts are ignored.
-- Cloudflare Pages security headers restrict scripts, framing, powerful browser capabilities, and cross-origin resource loading.
+- Vercel security headers restrict scripts, framing, powerful browser capabilities, and cross-origin resource loading.
 - Production source maps are not emitted.
 - Please report vulnerabilities according to [`SECURITY.md`](SECURITY.md), not through a public issue.
 
@@ -123,14 +125,14 @@ Never commit credentials. If a future integration requires a secret, keep it in 
 
 ## Deployment
 
-The static build is configured for Cloudflare Pages:
+The static build deploys to Vercel, while the `moriatz.com` DNS zone remains managed by Hostinger:
 
 ```bash
-bunx wrangler login
+bunx vercel login
 bun run deploy
 ```
 
-No Cloudflare token belongs in this repository. CI deployment should use an environment-scoped GitHub secret only if automated deployment is added later.
+No Vercel or Hostinger token belongs in this repository. CI deployment should use environment-scoped provider secrets only if automated deployment is added later.
 
 ## Contributing
 

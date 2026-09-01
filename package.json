@@ -13,7 +13,7 @@
   "bugs": {
     "url": "https://github.com/Paul-M-Kallarackal/what-can-i-click/issues"
   },
-  "homepage": "https://github.com/Paul-M-Kallarackal/what-can-i-click#readme",
+  "homepage": "https://what-can-i-click.moriatz.com",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
@@ -25,7 +25,7 @@
     "test:e2e": "playwright test",
     "audit": "bun audit --audit-level=high",
     "check": "bun run typecheck && bun run test && bun run audit && bun run build",
-    "deploy": "bun run build && wrangler deploy --config dist/server/wrangler.json"
+    "deploy": "bunx vercel --prod"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.6",
