@@ -17,7 +17,7 @@ ClickHouse advice is easy to memorize and hard to reason about. This project mak
 - when to choose MergeTree, ReplacingMergeTree, CoalescingMergeTree, SummingMergeTree, AggregatingMergeTree, CollapsingMergeTree, or VersionedCollapsingMergeTree;
 - how `argMax` and `SELECT FINAL` trade explicit aggregation against query-time engine reconciliation;
 - how ordering, sparse indexes, granules, and column pruning reduce reads;
-- how materialized views and projections move or duplicate work;
+- how an incremental materialized view writes a separately queried target while a projection stays attached to the base table and is selected by the optimizer;
 - how shards, replicas, and Keeper solve different distributed-system problems; and
 - why TTL and mutations consume merge resources.
 
@@ -26,6 +26,8 @@ Every recommendation includes rationale, alternatives, tradeoffs, validation ste
 The manual shell stays on the core MergeTree foundry. An explicit WebMCP family request temporarily replaces that card with the selected engine's fit, gotcha, and read contract; it never reintroduces the old family grid. ReplacingMergeTree's background, `argMax`, and `FINAL` views use separate deterministic 3D lifecycles so the selected advice and the visible machine cannot silently disagree.
 
 When an agent requests `argmax-vs-final`, one shared candidate rack feeds two synchronized 3D lanes. The comparison makes the decision boundary explicit: `argMax` needs one deliberate total order; `FINAL` asks the engine to reconcile matching candidates during the query. Comparison mode disappears as soon as a single method or another part of the world is selected.
+
+When an agent requests `materialized-view-vs-projection`, one inserted block feeds two visibly different contracts. The yellow lane transforms the block and writes a separate target table; the cyan lane installs an alternate representation inside the base table lifecycle and lets the optimizer choose it. Architecture recommendations can provide a bounded `accelerationGoal` so repeated aggregates and routing transforms do not collapse into the same advice as alternate sorting and transparent acceleration.
 
 CoalescingMergeTree similarly distinguishes eventual storage convergence from a bounded `SELECT FINAL` read. The background mosaic kiln assembles sparse fields during later merges; the query-time light table assembles them now and makes the extra read work and NULL semantics explicit.
 
@@ -49,7 +51,7 @@ The app registers seven bounded tools when `document.modelContext` is available:
 | `recommend_clickhouse_architecture` | Build a deterministic recommendation and stage its relevant mechanism path | Yes |
 | `play_architecture_story` | Animate a recommendation path | Yes |
 | `inspect_clickhouse_mechanism` | Focus a reviewed mechanism; optionally select a bounded family/read behavior | Yes |
-| `compare_clickhouse_methods` | Align two mechanisms, compare `argMax` with `FINAL`, or open two reviewed production accounts side by side | Yes |
+| `compare_clickhouse_methods` | Align two mechanisms, compare `argMax` with `FINAL`, compare materialized views with projections, or open two reviewed production accounts side by side | Yes |
 | `search_clickhouse_evidence` | Search the bounded public evidence corpus | No |
 | `reset_clickhouse_world` | Restore the initial simulation state | Yes |
 

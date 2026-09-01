@@ -13,6 +13,8 @@ When WebMCP explicitly focuses another reviewed MergeTree-family engine, the sam
 
 The bounded `argmax-vs-final` comparison is also agent-only. It uses one shared set of version candidates and two parallel lanes: cyan computes an explicit `(version, tie-breaker)` winner with `argMax`, while yellow applies ReplacingMergeTree rules through `SELECT FINAL`. Both return the same logical v3 row in the reviewed example; the visualization compares the contract and relative read work, not an invented latency number. Choosing any single family, strategy, scenario, mechanism, journey, or evidence item clears comparison state.
 
+Incremental materialized views and projections now use separate causal 3D machines. The materialized-view lane branches each newly inserted block through a transform into a separately queried target table, with explicit backfill and source-rewrite warnings. The projection lane keeps an alternate cyan representation attached to each base-table part while an optimizer arm chooses it for a query that still names the base table. The agent-only `materialized-view-vs-projection` comparison runs both contracts from one shared input without presenting either as a generic faster-read switch. A bounded `accelerationGoal` lets the advisor distinguish repeated aggregation or transform routing from an alternate order or transparent same-table acceleration.
+
 CoalescingMergeTree has two separate sparse-update paths. Background mode uses a slow mosaic kiln: fragments can remain split across parts until an eligible merge assembles the stored row. `SELECT FINAL` uses a query-time mosaic light table: a bounded read collects the fragments immediately, applies the rule that NULL means “no update,” and returns one assembled row while showing higher read work. A family inspection without an explicit strategy always resets to reviewed background behavior rather than inheriting stale state.
 
 SummingMergeTree separates storage reduction from read correctness in one deterministic counter line. One background merge visibly compacts equal-key Parts A (`+5`) and B (`+7`) into a stored partial (`12`) while a newer equal-key part (`+4`) remains in another part. The exact-read lane then aggregates every visible row and returns `16`. The agent-only card repeats that contract and recommends a separate raw MergeTree table when the rollup must not discard detail.
@@ -76,6 +78,7 @@ Strawn is used only for the product title. The interface uses system sans-serif 
 - Pause/play and reset are the only persistent simulation controls.
 - The scenario picker is the primary manual control.
 - Selecting a pressure scenario focuses its responsible mechanism and opens the recommendation inspector.
+- Desktop scenario and mechanism explanations replace the MergeTree card in the same left workbench position; they never open as a competing right-side drawer. Mobile retains the two-snap bottom sheet.
 - Escape moves back one interface level.
 - Mobile hides the telemetry strip and keeps the scenario control reachable below the scene.
 - Reduced motion preserves every state and explanation with discrete changes.
@@ -125,7 +128,7 @@ The mechanism registry drives WebMCP focus, the inspector, accessible narration,
 - Parts keep a stable scale through crane pickup and merge handoff.
 - Parts A and B visibly retire only after Part C commits.
 - Keeper remains outside the user-data path.
-- Materialized views and projections remain semantically distinct in the reviewed mechanism corpus.
+- Materialized views and projections resolve to different deterministic frames, different 3D geometry, different inspector decision rules, and a shared-input comparison scene.
 - System view remains at or below 220 draw calls.
 - The app recovers from a WebGL context-loss signal.
 - Reduced motion preserves the same meaning.

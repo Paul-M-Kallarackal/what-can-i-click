@@ -6,11 +6,10 @@ export default defineConfig({
   testDir: "./tests",
   fullyParallel: true,
   retries: isCi ? 1 : 0,
-  // GitHub-hosted runners software-render the Three.js canvas. A second live
-  // Chromium context starves requestAnimationFrame and skips semantic machine
-  // phases, so CI deliberately owns one WebGL context at a time. Local runs
-  // retain two workers for faster feedback on machines with a real GPU.
-  workers: isCi ? 1 : 2,
+  // A second live Chromium WebGL context can starve requestAnimationFrame and
+  // skip semantic machine phases on both hosted and software-rendered local
+  // environments. Visual correctness is more important than parallel speed.
+  workers: 1,
   // Stop an unhealthy renderer after its first retried failure. This preserves
   // the full suite on green runs while keeping the first trace and screenshot
   // legible instead of creating a long cascade of secondary timeouts.

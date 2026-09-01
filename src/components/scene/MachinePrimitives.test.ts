@@ -27,6 +27,7 @@ import {
   motionStage,
   motionWindow,
   partitionExplosionFrame,
+  precomputeSwitchyardFrame,
   replacingReadFrame,
   replicaLagFrame,
   requestTidbitFocusFeedback,
@@ -144,6 +145,34 @@ describe("MergeTree merge choreography", () => {
     const nextFeed = foundryMergeFrame(19.4);
     expect(nextFeed.stage).toBe("feed");
     expect(foundryPartLifecycle(nextFeed, "removed")).toBe("active");
+  });
+});
+
+describe("derived-data switchyard choreography", () => {
+  it.each(["materialized-view", "projection", "comparison", "write-amplification"] as const)(
+    "orders arrival, derivation, commit, and query for %s",
+    (mode) => {
+      const frames = Array.from({ length: 4_000 }, (_, index) => precomputeSwitchyardFrame(index / 100, mode));
+      expect(new Set(frames.map((frame) => frame.stage))).toEqual(new Set(["arrive", "derive", "commit", "query"]));
+      expect(frames.some((frame) => frame.stage === "derive" && frame.sourceCommitProgress === 1)).toBe(true);
+      expect(frames.some((frame) => frame.stage === "query" && frame.resultProgress > 0)).toBe(mode !== "write-amplification");
+    },
+  );
+
+  it("keeps the MV and projection contracts on different tracks", () => {
+    const mv = precomputeSwitchyardFrame(0, "materialized-view", true);
+    const projection = precomputeSwitchyardFrame(0, "projection", true);
+    const comparison = precomputeSwitchyardFrame(0, "comparison", true);
+
+    expect(mv).toMatchObject({ mvTargetProgress: 1, projectionAttachProgress: 0, optimizerProgress: 0 });
+    expect(projection).toMatchObject({ mvTargetProgress: 0, projectionAttachProgress: 1, optimizerProgress: 1 });
+    expect(comparison).toMatchObject({ mvTargetProgress: 1, projectionAttachProgress: 1, optimizerProgress: 1 });
+  });
+
+  it("makes write amplification the heaviest bounded state", () => {
+    expect(precomputeSwitchyardFrame(0, "write-amplification", true).writeLoad).toBe(1);
+    expect(precomputeSwitchyardFrame(0, "materialized-view", true).writeLoad).toBeLessThan(1);
+    expect(precomputeSwitchyardFrame(0, "projection", true).writeLoad).toBeLessThan(1);
   });
 });
 

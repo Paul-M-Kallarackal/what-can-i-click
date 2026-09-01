@@ -265,6 +265,23 @@ describe("WebMCP tools", () => {
     expect(await compare.execute({ comparison: "argmax-vs-final" })).toMatchObject({ ok: true, comparison: "argmax-vs-final", view: "latest-state-comparison", methods: expect.arrayContaining([expect.objectContaining({ id: "argmax" }), expect.objectContaining({ id: "final" })]) });
     expect(useAtlasStore.getState()).toMatchObject({ mergeFamilyId: "replacing", latestReadComparison: "argmax-vs-final", journeyPanelOpen: false });
 
+    expect(await compare.execute({ comparison: "materialized-view-vs-projection" })).toMatchObject({
+      ok: true,
+      comparison: "materialized-view-vs-projection",
+      view: "derived-data-comparison",
+      materializedView: { id: "precompute.materialized-view" },
+      projection: { id: "precompute.projection" },
+      decisionInputs: {
+        materializedView: ["repeated-aggregation", "transform-or-route"],
+        projection: ["alternate-order", "transparent-acceleration"],
+      },
+    });
+    expect(useAtlasStore.getState()).toMatchObject({
+      selectedMechanismId: "precompute.materialized-view",
+      comparisonIds: ["precompute.materialized-view", "precompute.projection"],
+      journeyPanelOpen: false,
+    });
+
     expect(await inspect.execute({ mergeFamilyId: "summing" })).toMatchObject({
       ok: true,
       latestReadStrategy: "background",

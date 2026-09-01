@@ -25,6 +25,9 @@ import {
   InstrumentGauge,
   keeperQuorumFrame,
   partitionExplosionFrame,
+  precomputeSwitchyardFrame,
+  type PrecomputeSwitchyardFrame,
+  type PrecomputeVisualMode,
   replacingReadFrame,
   replicaLagFrame,
   resetMachineRenderTime,
@@ -1713,38 +1716,301 @@ function QueryScanner({ id, pressure }: { id: MechanismId; pressure: boolean }) 
   );
 }
 
-function DerivedSwitchyard({ id, pressure }: { id: MechanismId; pressure: boolean }) {
-  const router = useRef<THREE.Group>(null);
-  const getTime = useMachineTime();
-  useFrame(() => {
-    if (router.current) router.current.rotation.y = Math.sin(getTime() * 0.7) * 0.18;
-  });
-  const mvActive = id === "precompute.materialized-view" || id === "precompute.aggregate-states";
-  const projectionActive = id === "precompute.projection" || id === "precompute.optimizer-choice";
+function PrecomputeBlock({ color = COLORS.yellow }: { color?: string }) {
   return (
-    <group position={[0.2, 0.7, 0]}>
-      <MachinePlate position={[0, 0.15, 0]} size={[9.2, 0.22, 4.45]} color="#D5D6D3" />
-      <Line points={[[ -4, .55, 0], [4, .55, 0]]} color="#15171A" lineWidth={6} />
-      <Line points={[[ -1.75, .55, 0], [-.55, 1.1, -1.35], [2.9, 1.1, -1.35]]} color={mvActive ? COLORS.yellow : "#757A77"} lineWidth={5} />
-      <Line points={[[ -0.4, .55, 0], [.75, 1.1, 1.35], [3.1, 1.1, 1.35]]} color={projectionActive ? COLORS.cyan : "#757A77"} lineWidth={5} />
-      <MachineValue position={[-3.25, 1, 0]} value="base blocks" detail="source table" color="#737875" />
-      <group position={[1.55, 1.1, -1.35]}>
-        <MachinePlate position={[0, 0, 0]} size={[3.2, 1.35, 1.25]} color={mvActive ? COLORS.yellow : "#777C79"} />
-        <DataBars count={16} spread={[2.35, 0.6, 0.65]} offset={[0, 0.15, 0]} color="#15171A" />
-        <Html pointerEvents="none" center position={[0, 1.35, 0]} distanceFactor={9}><span className="machine-stage-label">SEPARATE MV TARGET</span></Html>
-      </group>
-      <group position={[1.75, 1.1, 1.35]}>
-        <RoundedBox args={[3.3, 1.45, 1.25]} radius={0.14} smoothness={3}><meshStandardMaterial color="#15171A" roughness={0.3} metalness={0.46} /></RoundedBox>
-        <RoundedBox args={[2.65, 0.3, 1.35]} radius={0.06} smoothness={2} position={[0, 0.84, 0]}><meshStandardMaterial color={projectionActive ? COLORS.cyan : "#777C79"} emissive={projectionActive ? COLORS.cyan : "#777C79"} emissiveIntensity={0.22} /></RoundedBox>
-        <Html pointerEvents="none" center position={[0, 1.45, 0]} distanceFactor={9}><span className="machine-stage-label">ATTACHED PROJECTION</span></Html>
-      </group>
-      <group ref={router} position={[-0.45, 1.35, 0]}>
-        <RoundedBox args={[0.72, 2.3, 2.9]} radius={0.11} smoothness={3}><meshStandardMaterial color={pressure ? COLORS.pressure : "#15171A"} roughness={0.25} metalness={0.57} /></RoundedBox>
-        <mesh position={[0.42, 0, 0]}><boxGeometry args={[0.14, 1.55, 2.25]} /><meshStandardMaterial color={id === "precompute.write-amplification" ? COLORS.pressure : COLORS.yellow} emissive={id === "precompute.write-amplification" ? COLORS.pressure : COLORS.yellow} emissiveIntensity={0.38} /></mesh>
-      </group>
-      <MechanismTitle id={id} eyebrow="DERIVED-DATA SWITCHYARD" />
+    <group>
+      <DataCassette color={color} scale={[1.12, 1.12, 1.08]} />
+      <DataBars count={8} spread={[0.72, 0.24, 0.42]} offset={[0, -0.11, 0]} scale={[0.055, 0.14, 0.055]} color="#15171A" />
     </group>
   );
+}
+
+function usePrecomputeAnimation(
+  mode: PrecomputeVisualMode,
+  applyFrame: (frame: PrecomputeSwitchyardFrame) => void,
+) {
+  const getTime = useMachineTime();
+  const reducedMotion = useAtlasStore((state) => state.reducedMotion);
+  useEffect(() => () => {
+    if (document.documentElement.dataset.precomputeMode === mode) {
+      delete document.documentElement.dataset.precomputeMode;
+      delete document.documentElement.dataset.precomputeStage;
+    }
+  }, [mode]);
+  useFrame(() => {
+    const frame = precomputeSwitchyardFrame(getTime(), mode, reducedMotion);
+    document.documentElement.dataset.precomputeMode = mode;
+    document.documentElement.dataset.precomputeStage = frame.stage;
+    applyFrame(frame);
+  });
+}
+
+const PRECOMPUTE_STAGE_COPY = {
+  arrive: "ONE INSERTED BLOCK ARRIVES",
+  derive: "DERIVED WORK RUNS",
+  commit: "DERIVED DATA COMMITS",
+  query: "THE READ USES THE READY PATH",
+} as const;
+
+function MaterializedViewMachine({ id, pressure }: { id: MechanismId; pressure: boolean }) {
+  const inputBlock = useRef<THREE.Group>(null);
+  const basePart = useRef<THREE.Group>(null);
+  const transformBlock = useRef<THREE.Group>(null);
+  const targetPart = useRef<THREE.Group>(null);
+  const query = useRef<THREE.Group>(null);
+  const result = useRef<THREE.Group>(null);
+  const status = useRef<HTMLElement>(null);
+  const previousStage = useRef("");
+  const aggregateStates = id === "precompute.aggregate-states";
+
+  usePrecomputeAnimation("materialized-view", (frame) => {
+    if (inputBlock.current) inputBlock.current.position.x = THREE.MathUtils.lerp(-4.15, -2.62, frame.sourceProgress);
+    if (basePart.current) {
+      basePart.current.visible = frame.sourceCommitProgress > 0.01;
+      basePart.current.scale.setScalar(THREE.MathUtils.lerp(0.04, 1, frame.sourceCommitProgress));
+    }
+    if (transformBlock.current) {
+      transformBlock.current.visible = frame.mvTransformProgress > 0.01 && frame.mvTargetProgress < 0.98;
+      const firstLeg = THREE.MathUtils.clamp(frame.mvTransformProgress / 0.58, 0, 1);
+      const secondLeg = THREE.MathUtils.clamp((frame.mvTransformProgress - 0.58) / 0.42, 0, 1);
+      transformBlock.current.position.set(
+        THREE.MathUtils.lerp(-2.45, -0.2, firstLeg) + secondLeg * 0.28,
+        0.92 + Math.sin(frame.mvTransformProgress * Math.PI) * 0.72,
+        THREE.MathUtils.lerp(0, -1.35, firstLeg),
+      );
+      transformBlock.current.scale.setScalar(THREE.MathUtils.lerp(0.92, 0.54, secondLeg));
+    }
+    if (targetPart.current) {
+      targetPart.current.visible = frame.mvTargetProgress > 0.01;
+      targetPart.current.position.x = THREE.MathUtils.lerp(0.55, 2.72, frame.mvTargetProgress);
+      targetPart.current.scale.setScalar(THREE.MathUtils.lerp(0.08, 1, frame.mvTargetProgress));
+    }
+    if (query.current) {
+      query.current.visible = frame.stage === "query";
+      query.current.position.x = THREE.MathUtils.lerp(4.05, 2.95, frame.resultProgress);
+    }
+    if (result.current) {
+      result.current.visible = frame.resultProgress > 0.01;
+      result.current.scale.setScalar(THREE.MathUtils.lerp(0.05, 1, frame.resultProgress));
+    }
+    if (previousStage.current !== frame.stage) {
+      previousStage.current = frame.stage;
+      if (status.current) status.current.textContent = PRECOMPUTE_STAGE_COPY[frame.stage];
+    }
+  });
+
+  return (
+    <group position={[0, 0.62, 0]}>
+      <MachinePlate position={[0, 0.12, 0]} size={[9.6, 0.22, 5.15]} color="#D7D8D5" />
+      <Line points={[[ -4.25, 0.54, 0], [-2.3, 0.54, 0]]} color="#15171A" lineWidth={6} />
+      <Line points={[[ -2.35, 0.54, 0], [-1.45, 0.54, 1.25]]} color="#777D79" lineWidth={5} />
+      <Line points={[[ -2.35, 0.54, 0], [-0.35, 0.82, -1.35], [3.25, 0.82, -1.35]]} color={pressure ? COLORS.pressure : COLORS.yellow} lineWidth={6} />
+
+      <group ref={inputBlock} position={[-4.15, 0.92, 0]}><PrecomputeBlock /></group>
+      <Html pointerEvents="none" center position={[-3.65, 1.75, 0]} distanceFactor={9}><span className="precompute-contract-label">INSERTED BLOCK</span></Html>
+
+      <group position={[-1.35, 0.72, 1.25]}>
+        <MachinePlate position={[0, 0, 0]} size={[2.45, 0.16, 1.62]} color="#F5F5F1" />
+        <group ref={basePart} visible={false} scale={0.04}><FoundryPartArtifact accent="#777D79" /></group>
+        <Html pointerEvents="none" center position={[0, 1.2, 0]} distanceFactor={9}><span className="precompute-contract-label" data-tone="neutral">SOURCE TABLE · BASE PART</span></Html>
+      </group>
+
+      <group position={[0, 1.45, -1.35]}>
+        <RoundedBox args={[1.15, 2.55, 1.58]} radius={0.14} smoothness={4} castShadow>
+          <meshStandardMaterial color={pressure ? COLORS.pressure : "#15171A"} roughness={0.24} metalness={0.52} />
+        </RoundedBox>
+        <DataBars count={12} spread={[0.55, 1.45, 0.74]} offset={[0, -0.45, 0]} color={COLORS.yellow} />
+        <Html pointerEvents="none" center position={[0, 1.72, 0]} distanceFactor={9}><span className="precompute-contract-label" data-tone="yellow">MV SELECT · NEW BLOCK ONLY</span></Html>
+      </group>
+      <group ref={transformBlock} position={[-2.45, 0.92, 0]} visible={false}><PrecomputeBlock color={pressure ? COLORS.pressure : COLORS.yellow} /></group>
+
+      <group position={[2.72, 0.68, -1.35]}>
+        <MachinePlate position={[0, 0, 0]} size={[2.8, 0.16, 1.72]} color="#F5F5F1" />
+        <group ref={targetPart} position={[0.55, 0.42, 0]} visible={false} scale={0.08}>
+          <FoundryPartArtifact accent={pressure ? COLORS.pressure : COLORS.yellow} secondaryAccent={aggregateStates ? COLORS.cyan : undefined} />
+        </group>
+        <Html pointerEvents="none" center position={[0, 1.38, 0]} distanceFactor={9}><span className="precompute-contract-label" data-tone="yellow">SEPARATE TARGET TABLE</span></Html>
+        <Html pointerEvents="none" center position={[0, -0.22, 0]} distanceFactor={9}><span className="precompute-detail-label">{aggregateStates ? "PARTIAL STATES MERGE LATER" : "QUERY THIS TABLE DIRECTLY"}</span></Html>
+      </group>
+
+      <group ref={query} position={[4.05, 1.45, -1.35]} visible={false}><PrecomputeBlock color="#15171A" /></group>
+      <group ref={result} position={[4.08, 0.88, 0.72]} visible={false} scale={0.05}><MachineValue position={[0, 0, 0]} value="answer" detail="target read" color={COLORS.yellow} /></group>
+      <Line points={[[3.95, 1.08, -1.35], [2.95, 1.08, -1.35]]} color="#15171A" lineWidth={3} dashed dashSize={0.12} gapSize={0.08} />
+
+      <Html pointerEvents="none" center position={[0, 4.08, 0]} distanceFactor={9}>
+        <div className="precompute-stage-readout" data-contract="materialized-view"><span>INCREMENTAL MATERIALIZED VIEW</span><strong ref={status}>ONE INSERTED BLOCK ARRIVES</strong><small>separate target · explicit reads · explicit backfill</small></div>
+      </Html>
+    </group>
+  );
+}
+
+function ProjectionMachine({ pressure }: { id: MechanismId; pressure: boolean }) {
+  const inputBlock = useRef<THREE.Group>(null);
+  const basePart = useRef<THREE.Group>(null);
+  const projectionLayer = useRef<THREE.Group>(null);
+  const optimizerArm = useRef<THREE.Group>(null);
+  const query = useRef<THREE.Group>(null);
+  const result = useRef<THREE.Group>(null);
+  const status = useRef<HTMLElement>(null);
+  const previousStage = useRef("");
+
+  usePrecomputeAnimation("projection", (frame) => {
+    if (inputBlock.current) inputBlock.current.position.x = THREE.MathUtils.lerp(-4.15, -1.95, frame.sourceProgress);
+    if (basePart.current) basePart.current.scale.setScalar(THREE.MathUtils.lerp(0.06, 1, frame.sourceCommitProgress));
+    if (projectionLayer.current) {
+      projectionLayer.current.visible = frame.projectionAttachProgress > 0.01;
+      projectionLayer.current.position.y = THREE.MathUtils.lerp(-0.36, 0.28, frame.projectionAttachProgress);
+      projectionLayer.current.scale.x = THREE.MathUtils.lerp(0.08, 1, frame.projectionAttachProgress);
+    }
+    if (optimizerArm.current) optimizerArm.current.rotation.z = THREE.MathUtils.lerp(-0.48, 0.35, frame.optimizerProgress);
+    if (query.current) {
+      query.current.visible = frame.stage === "query";
+      query.current.position.x = THREE.MathUtils.lerp(-4.1, 2.65, frame.optimizerProgress);
+      query.current.position.z = THREE.MathUtils.lerp(1.28, 0.3, frame.optimizerProgress);
+    }
+    if (result.current) {
+      result.current.visible = frame.resultProgress > 0.01;
+      result.current.scale.setScalar(THREE.MathUtils.lerp(0.05, 1, frame.resultProgress));
+    }
+    if (previousStage.current !== frame.stage) {
+      previousStage.current = frame.stage;
+      if (status.current) status.current.textContent = PRECOMPUTE_STAGE_COPY[frame.stage];
+    }
+  });
+
+  return (
+    <group position={[0, 0.62, 0]}>
+      <MachinePlate position={[0, 0.12, 0]} size={[9.6, 0.22, 5.15]} color="#D7D8D5" />
+      <Line points={[[ -4.3, 0.54, 0], [-1.9, 0.54, 0], [0, 0.54, 0], [3.85, 0.54, 0]]} color="#15171A" lineWidth={6} />
+      <group ref={inputBlock} position={[-4.15, 0.92, 0]}><PrecomputeBlock /></group>
+      <Html pointerEvents="none" center position={[-3.6, 1.78, 0]} distanceFactor={9}><span className="precompute-contract-label">INSERTED BLOCK</span></Html>
+
+      <group position={[0.25, 1.25, 0]}>
+        <RoundedBox args={[4.85, 2.25, 2.35]} radius={0.2} smoothness={5} castShadow>
+          <meshStandardMaterial color="#F7F7F3" roughness={0.38} metalness={0.08} />
+        </RoundedBox>
+        <Line points={[[ -2.18, -0.82, 1.19], [2.18, -0.82, 1.19], [2.18, 0.82, 1.19], [-2.18, 0.82, 1.19], [-2.18, -0.82, 1.19]]} color="#15171A" lineWidth={2.5} />
+        <group ref={basePart} position={[0, -0.38, 0]} scale={0.06}>
+          <DataBars count={24} spread={[3.55, 0.62, 1.35]} offset={[0, 0, 0]} scale={[0.075, 0.3, 0.075]} color="#777D79" />
+        </group>
+        <group ref={projectionLayer} position={[0, -0.36, 0]} visible={false}>
+          <RoundedBox args={[4.15, 0.34, 1.72]} radius={0.06} smoothness={3} castShadow>
+            <meshStandardMaterial color={pressure ? COLORS.pressure : COLORS.cyan} emissive={pressure ? COLORS.pressure : COLORS.cyan} emissiveIntensity={0.24} roughness={0.34} />
+          </RoundedBox>
+          <DataBars count={18} spread={[3.35, 0.12, 1.15]} offset={[0, 0.04, 0]} scale={[0.06, 0.11, 0.06]} color="#15171A" />
+        </group>
+        <Html pointerEvents="none" center position={[0, 1.55, 0]} distanceFactor={9}><span className="precompute-contract-label" data-tone="cyan">SAME TABLE · ATTACHED TO EACH PART</span></Html>
+        <Html pointerEvents="none" center position={[0, -1.32, 0]} distanceFactor={9}><span className="precompute-detail-label">BASE ORDER + ALTERNATE REPRESENTATION</span></Html>
+      </group>
+
+      <group position={[-2.9, 2.55, 1.2]}>
+        <RoundedBox args={[1.1, 1.45, 1.15]} radius={0.12} smoothness={3} castShadow><meshStandardMaterial color="#15171A" roughness={0.25} metalness={0.5} /></RoundedBox>
+        <group ref={optimizerArm} position={[0.42, -0.06, 0]} rotation={[0, 0, -0.48]}><mesh position={[0.52, 0, 0]}><boxGeometry args={[1.05, 0.12, 0.22]} /><meshStandardMaterial color={COLORS.yellow} emissive={COLORS.yellow} emissiveIntensity={0.3} /></mesh></group>
+        <Html pointerEvents="none" center position={[0, 1.12, 0]} distanceFactor={9}><span className="precompute-contract-label">OPTIMIZER CHOOSES</span></Html>
+      </group>
+      <Line points={[[ -4.25, 1.55, 1.28], [-2.9, 1.55, 1.28], [-1.65, 1.15, 0.62], [2.8, 1.15, 0.3]]} color={pressure ? COLORS.pressure : COLORS.cyan} lineWidth={5} />
+      <group ref={query} position={[-4.1, 1.55, 1.28]} visible={false}><PrecomputeBlock color="#15171A" /></group>
+      <Html pointerEvents="none" center position={[-3.75, 2.38, 1.28]} distanceFactor={9}><span className="precompute-detail-label">QUERY STILL NAMES BASE TABLE</span></Html>
+      <group ref={result} position={[3.72, 1.05, 0.3]} visible={false} scale={0.05}><MachineValue position={[0, 0, 0]} value="answer" detail="chosen layout" color={COLORS.cyan} /></group>
+
+      <Html pointerEvents="none" center position={[0, 4.08, 0]} distanceFactor={9}>
+        <div className="precompute-stage-readout" data-contract="projection"><span>PROJECTION</span><strong ref={status}>ONE INSERTED BLOCK ARRIVES</strong><small>same table · attached lifecycle · optimizer selected</small></div>
+      </Html>
+    </group>
+  );
+}
+
+function PrecomputeComparisonMachine({ pressure, writeAmplification = false }: { pressure: boolean; writeAmplification?: boolean }) {
+  const mode: PrecomputeVisualMode = writeAmplification ? "write-amplification" : "comparison";
+  const inputBlock = useRef<THREE.Group>(null);
+  const mvBlock = useRef<THREE.Group>(null);
+  const mvTarget = useRef<THREE.Group>(null);
+  const projectionLayer = useRef<THREE.Group>(null);
+  const optimizer = useRef<THREE.Group>(null);
+  const status = useRef<HTMLElement>(null);
+  const previousStage = useRef("");
+
+  usePrecomputeAnimation(mode, (frame) => {
+    if (inputBlock.current) inputBlock.current.position.x = THREE.MathUtils.lerp(-4.25, -2.55, frame.sourceProgress);
+    if (mvBlock.current) {
+      mvBlock.current.visible = frame.mvTransformProgress > 0.01;
+      mvBlock.current.position.x = THREE.MathUtils.lerp(-2.35, 0.35, frame.mvTransformProgress);
+      mvBlock.current.position.z = THREE.MathUtils.lerp(0, -1.35, frame.mvTransformProgress);
+      mvBlock.current.position.y = 0.88 + Math.sin(frame.mvTransformProgress * Math.PI) * 0.52;
+    }
+    if (mvTarget.current) {
+      mvTarget.current.visible = frame.mvTargetProgress > 0.01;
+      mvTarget.current.scale.setScalar(THREE.MathUtils.lerp(0.05, 1, frame.mvTargetProgress));
+    }
+    if (projectionLayer.current) {
+      projectionLayer.current.visible = frame.projectionAttachProgress > 0.01;
+      projectionLayer.current.position.y = THREE.MathUtils.lerp(-0.18, 0.38, frame.projectionAttachProgress);
+      projectionLayer.current.scale.x = THREE.MathUtils.lerp(0.05, 1, frame.projectionAttachProgress);
+    }
+    if (optimizer.current) optimizer.current.rotation.z = THREE.MathUtils.lerp(-0.45, 0.36, frame.optimizerProgress);
+    if (previousStage.current !== frame.stage) {
+      previousStage.current = frame.stage;
+      if (status.current) status.current.textContent = writeAmplification
+        ? `${Math.round(frame.writeLoad * 3)} WRITE TRACKS COMPETE`
+        : PRECOMPUTE_STAGE_COPY[frame.stage];
+    }
+  });
+
+  const accent = writeAmplification || pressure ? COLORS.pressure : COLORS.yellow;
+  return (
+    <group position={[0, 0.62, 0]}>
+      <MachinePlate position={[0, 0.12, 0]} size={[9.8, 0.22, 5.35]} color="#D7D8D5" />
+      <group ref={inputBlock} position={[-4.25, 0.88, 0]}><PrecomputeBlock /></group>
+      <Line points={[[ -4.35, 0.52, 0], [-2.35, 0.52, 0]]} color="#15171A" lineWidth={6} />
+      <Line points={[[ -2.35, 0.52, 0], [-0.45, 0.82, -1.35], [3.25, 0.82, -1.35]]} color={accent} lineWidth={6} />
+      <Line points={[[ -2.35, 0.52, 0], [-0.45, 0.82, 1.35], [3.25, 0.82, 1.35]]} color={writeAmplification ? COLORS.pressure : COLORS.cyan} lineWidth={6} />
+
+      <group position={[0.1, 1.42, -1.35]}>
+        <RoundedBox args={[1.05, 2.35, 1.42]} radius={0.13} smoothness={3} castShadow><meshStandardMaterial color={writeAmplification ? COLORS.pressure : "#15171A"} roughness={0.25} metalness={0.5} /></RoundedBox>
+        <Html pointerEvents="none" center position={[0, 1.58, 0]} distanceFactor={9}><span className="precompute-contract-label" data-tone="yellow">MV · TRANSFORM</span></Html>
+      </group>
+      <group ref={mvBlock} position={[-2.35, 0.88, 0]} visible={false}><PrecomputeBlock color={accent} /></group>
+      <group position={[2.55, 0.72, -1.35]}>
+        <MachinePlate position={[0, 0, 0]} size={[2.45, 0.15, 1.55]} color="#F5F5F1" />
+        <group ref={mvTarget} position={[0, 0.42, 0]} visible={false} scale={0.05}><FoundryPartArtifact accent={accent} /></group>
+        <Html pointerEvents="none" center position={[0, 1.22, 0]} distanceFactor={9}><span className="precompute-detail-label">SEPARATE TARGET</span></Html>
+      </group>
+
+      <group position={[1.15, 0.85, 1.35]}>
+        <RoundedBox args={[4.35, 0.78, 1.72]} radius={0.14} smoothness={4} castShadow><meshStandardMaterial color="#F7F7F3" roughness={0.38} /></RoundedBox>
+        <DataBars count={18} spread={[3.35, 0.24, 0.9]} offset={[0, -0.12, 0]} scale={[0.075, 0.2, 0.075]} color="#777D79" />
+        <group ref={projectionLayer} position={[0, -0.18, 0]} visible={false}>
+          <RoundedBox args={[3.75, 0.28, 1.25]} radius={0.05} smoothness={3}><meshStandardMaterial color={writeAmplification ? COLORS.pressure : COLORS.cyan} emissive={writeAmplification ? COLORS.pressure : COLORS.cyan} emissiveIntensity={0.22} /></RoundedBox>
+        </group>
+        <Html pointerEvents="none" center position={[0, 0.98, 0]} distanceFactor={9}><span className="precompute-contract-label" data-tone="cyan">PROJECTION · ATTACHED</span></Html>
+      </group>
+      <group position={[-1.55, 2.42, 1.35]}>
+        <RoundedBox args={[0.8, 1.15, 0.9]} radius={0.1} smoothness={3}><meshStandardMaterial color="#15171A" /></RoundedBox>
+        <group ref={optimizer} position={[0.25, 0, 0]} rotation={[0, 0, -0.45]}><mesh position={[0.38, 0, 0]}><boxGeometry args={[0.76, 0.1, 0.18]} /><meshStandardMaterial color={COLORS.yellow} /></mesh></group>
+      </group>
+
+      {writeAmplification && <InstrumentGauge position={[3.78, 1.08, 0]} value={1} color={COLORS.pressure} label="WRITE LOAD" />}
+      <Html pointerEvents="none" center position={[0, 4.18, 0]} distanceFactor={9}>
+        <div className="precompute-stage-readout precompute-stage-readout--comparison" data-contract={mode}>
+          <span>{writeAmplification ? "WRITE AMPLIFICATION" : "SAME INPUT · DIFFERENT CONTRACTS"}</span>
+          <strong ref={status}>{writeAmplification ? "3 WRITE TRACKS COMPETE" : "ONE INSERTED BLOCK ARRIVES"}</strong>
+          <small>{writeAmplification ? "base + target + attached representation" : "separate target versus attached representation"}</small>
+        </div>
+      </Html>
+    </group>
+  );
+}
+
+function DerivedSwitchyard({ id, pressure }: { id: MechanismId; pressure: boolean }) {
+  const comparison = useAtlasStore((state) => state.comparisonIds);
+  const comparingDerivedData = Boolean(
+    comparison?.includes("precompute.materialized-view")
+    && comparison?.includes("precompute.projection"),
+  );
+  if (id === "precompute.write-amplification") return <PrecomputeComparisonMachine pressure={pressure} writeAmplification />;
+  if (comparingDerivedData) return <PrecomputeComparisonMachine pressure={pressure} />;
+  if (id === "precompute.materialized-view" || id === "precompute.aggregate-states") return <MaterializedViewMachine id={id} pressure={pressure} />;
+  return <ProjectionMachine id={id} pressure={pressure} />;
 }
 
 function ClusterSwitchboard({ id, pressure }: { id: MechanismId; pressure: boolean }) {
@@ -3455,13 +3721,15 @@ function PerformanceProbe() {
   const gl = useThree((state) => state.gl);
   const samples = useRef<number[]>([]);
   useFrame((_, delta) => {
-    if (delta <= 0 || delta > 0.25) return;
-    samples.current.push(delta);
-    if (samples.current.length < 90) return;
+    if (document.visibilityState === "hidden" || delta <= 0 || !Number.isFinite(delta)) return;
+    // Report a slow software-rendered scene instead of silently discarding it.
+    // The cap still excludes a suspended-tab jump from poisoning the average.
+    samples.current.push(Math.min(delta, 0.5));
+    if (samples.current.length < 30) return;
     const average = samples.current.reduce((sum, value) => sum + value, 0) / samples.current.length;
     document.documentElement.dataset.sceneFps = Math.min(60, 1 / average).toFixed(1);
     document.documentElement.dataset.sceneDrawCalls = String(gl.info.render.calls);
-    samples.current.splice(0, 45);
+    samples.current.splice(0, 15);
   });
   return null;
 }

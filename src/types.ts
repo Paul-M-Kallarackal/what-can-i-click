@@ -119,6 +119,7 @@ export type WorkloadProfile = {
   availability: "standard" | "high";
   topology: "single-region" | "multi-region";
   costPriority: "performance" | "balanced" | "cost";
+  accelerationGoal?: "repeated-aggregation" | "transform-or-route" | "alternate-order" | "transparent-acceleration" | "none";
 };
 
 export type EvidenceReference = { id: string; label: string; url: string; kind: EvidenceKind };

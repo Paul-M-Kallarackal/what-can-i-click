@@ -123,6 +123,79 @@ export type FoundryMergeFrame = {
 
 export type FoundryPartLifecycle = "active" | "inactive" | "removed";
 
+export type PrecomputeVisualMode = "materialized-view" | "projection" | "comparison" | "write-amplification";
+
+export type PrecomputeStage = "arrive" | "derive" | "commit" | "query";
+
+export type PrecomputeSwitchyardFrame = {
+  stage: PrecomputeStage;
+  sourceProgress: number;
+  sourceCommitProgress: number;
+  mvTransformProgress: number;
+  mvTargetProgress: number;
+  projectionAttachProgress: number;
+  optimizerProgress: number;
+  resultProgress: number;
+  writeLoad: number;
+};
+
+/**
+ * One deterministic insert-to-read cycle for the derived-data machines.
+ * The lanes intentionally share the same source timings while preserving two
+ * different contracts: an incremental MV writes a separate target, whereas a
+ * projection becomes an attached representation inside the base part.
+ */
+export function precomputeSwitchyardFrame(
+  time: number,
+  mode: PrecomputeVisualMode,
+  reducedMotion = false,
+): PrecomputeSwitchyardFrame {
+  const hasMaterializedView = mode === "materialized-view" || mode === "comparison" || mode === "write-amplification";
+  const hasProjection = mode === "projection" || mode === "comparison" || mode === "write-amplification";
+  const writeLoad = mode === "write-amplification" ? 1 : mode === "comparison" ? 0.82 : mode === "materialized-view" ? 0.64 : 0.5;
+
+  if (reducedMotion) {
+    return {
+      stage: "query",
+      sourceProgress: 1,
+      sourceCommitProgress: 1,
+      mvTransformProgress: hasMaterializedView ? 1 : 0,
+      mvTargetProgress: hasMaterializedView ? 1 : 0,
+      projectionAttachProgress: hasProjection ? 1 : 0,
+      optimizerProgress: mode === "projection" || mode === "comparison" ? 1 : 0,
+      resultProgress: mode === "write-amplification" ? 0 : 1,
+      writeLoad,
+    };
+  }
+
+  const cycle = motionLoop(time, 0.075);
+  const sourceProgress = motionStage(cycle, 0.03, 0.2);
+  const sourceCommitProgress = motionStage(cycle, 0.16, 0.3);
+  const deriveProgress = motionStage(cycle, 0.25, 0.5);
+  const commitProgress = motionStage(cycle, 0.47, 0.65);
+  const queryProgress = motionStage(cycle, 0.68, 0.84);
+  const resultProgress = motionStage(cycle, 0.82, 0.92);
+  const stage: PrecomputeStage = cycle < 0.25
+    ? "arrive"
+    : cycle < 0.5
+      ? "derive"
+      : cycle < 0.68
+        ? "commit"
+        : "query";
+
+  return {
+    stage,
+    sourceProgress,
+    sourceCommitProgress,
+    mvTransformProgress: hasMaterializedView ? deriveProgress : 0,
+    mvTargetProgress: hasMaterializedView ? commitProgress : 0,
+    projectionAttachProgress: hasProjection ? deriveProgress : 0,
+    optimizerProgress: mode === "projection" || mode === "comparison" ? queryProgress : 0,
+    resultProgress: mode === "write-amplification" ? 0 : resultProgress,
+    writeLoad,
+  };
+}
+
 /**
  * Keep a completed retirement readable during the next idle crane interval.
  * The status resets only when a new pair starts feeding the merge worker,

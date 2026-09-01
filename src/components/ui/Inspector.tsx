@@ -48,6 +48,40 @@ function InspectorGlance({
   );
 }
 
+function PrecomputeChoice({ id }: { id: "precompute.materialized-view" | "precompute.projection" }) {
+  const isMaterializedView = id === "precompute.materialized-view";
+  const compare = () => {
+    const store = useAtlasStore.getState();
+    store.selectMechanism("precompute.materialized-view");
+    store.setComparison("precompute.materialized-view", "precompute.projection");
+  };
+
+  return (
+    <section className="precompute-choice" data-current={isMaterializedView ? "materialized-view" : "projection"} aria-label="Materialized view and projection decision">
+      <header>
+        <span className="eyebrow">Choose by contract</span>
+        <h3>{isMaterializedView ? "Use a new target table" : "Keep one table name"}</h3>
+        <p>{isMaterializedView
+          ? "Choose this when every new insert should run a transform and write a separately queried target."
+          : "Choose this when ClickHouse should maintain an alternate representation inside the base table and choose it automatically."}</p>
+      </header>
+      <div className="precompute-choice__contrast">
+        <article data-method="materialized-view" data-active={isMaterializedView}>
+          <span>Materialized view</span>
+          <strong>Inserted block → transform → target table</strong>
+          <small>Backfill history separately. Read the target explicitly.</small>
+        </article>
+        <article data-method="projection" data-active={!isMaterializedView}>
+          <span>Projection</span>
+          <strong>Base part + attached alternate layout</strong>
+          <small>Materialize old parts. Verify optimizer choice with EXPLAIN.</small>
+        </article>
+      </div>
+      <button type="button" onClick={compare}><GitCompareArrows size={16} aria-hidden="true" />Compare both in 3D</button>
+    </section>
+  );
+}
+
 function MechanismInspector({ id }: { id: MechanismId }) {
   const mechanism = mechanismById(id)!;
   const viewLevel = useAtlasStore((state) => state.viewLevel);
@@ -63,23 +97,26 @@ function MechanismInspector({ id }: { id: MechanismId }) {
   return (
     <>
       <header className="inspector-head">
-        <span className="eyebrow">{mechanism.districtId} / {viewLevel === "xray" ? "analogy cutaway" : viewLevel}</span>
-        <h2>{mechanism.title}</h2>
-        <p className="inspector-tagline">{mechanism.tagline}</p>
-        <div className="inspector-meta"><span className="tempo">{mechanism.tempo}</span><span>{mechanism.states.length} semantic states</span></div>
+        <span className="eyebrow">{scenarioOwnsMechanism ? "ClickHouse gotcha" : `${mechanism.districtId} / ${viewLevel === "xray" ? "analogy cutaway" : viewLevel}`}</span>
+        <h2>{scenarioOwnsMechanism ? scenario.title : mechanism.title}</h2>
+        <p className="inspector-tagline">{scenarioOwnsMechanism ? scenario.description : mechanism.tagline}</p>
+        <div className="inspector-meta">{scenarioOwnsMechanism
+          ? <><span className="tempo">Scenario</span><span>{scenario.setting} · {scenario.settingValue}</span></>
+          : <><span className="tempo">{mechanism.tempo}</span><span>{mechanism.states.length} semantic states</span></>}</div>
       </header>
       {decision && !scenarioOwnsMechanism && <section className="decision-callout"><span className="eyebrow">Agent chose this</span><h3>{decision.title}</h3><p>{decision.recommendation}</p><small>{decision.confidence} confidence · {decision.evidenceIds.length} sources</small></section>}
       {scenarioOwnsMechanism && <section className="scenario-recommendation" data-personalized={Boolean(decision)}>
-        <span>{decision ? "For your workload" : "How to avoid this"}</span>
-        <h3>{decision?.title ?? scenario.title}</h3>
+        <span>{decision ? "For your workload" : "Recommended response"}</span>
         <p>{decision?.recommendation ?? scenario.lesson}</p>
         {decision && <small>{decision.confidence} confidence · {decision.evidenceIds.length} reviewed sources</small>}
+        <a href={primaryClaim.source.url} target="_blank" rel="noreferrer">Official guidance · {primaryClaim.source.label}<ExternalLink size={11} aria-hidden="true" /></a>
       </section>}
-      <InspectorGlance
+      {!scenarioOwnsMechanism && <InspectorGlance
         meaning={mechanism.explanation}
         tradeoff={primaryTradeoff.cost}
         proof={{ label: primaryClaim.source.label, text: primaryClaim.text, url: primaryClaim.source.url }}
-      />
+      />}
+      {(id === "precompute.materialized-view" || id === "precompute.projection") && <PrecomputeChoice id={id} />}
       {id === "mergetree.part-anatomy" && <div className="inspector-actions">
         <button type="button" data-active={viewLevel === "xray"} onClick={() => viewLevel === "xray" ? useAtlasStore.getState().setViewLevel("mechanism") : useAtlasStore.getState().openXray()}><Focus size={14} />{viewLevel === "xray" ? "Return to foundry" : "Open part X-ray"}</button>
       </div>}

@@ -685,6 +685,19 @@ html[data-cutaway-open="true"] .operational-hud { display: none; }
 .scenario-recommendation h3 { max-width: 100%; overflow-wrap: anywhere; color: #111; font-size: 18px; line-height: 1.2; }
 .scenario-recommendation p { color: #262626; font-size: 15px; line-height: 1.48; }
 .scenario-recommendation small { color: #575d5a; font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; font-size: 11px; line-height: 1.4; text-transform: uppercase; }
+.scenario-recommendation a {
+  display: inline-flex;
+  width: max-content;
+  max-width: 100%;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+  color: #111;
+  font-size: 13px;
+  font-weight: 750;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .scenario-recommendation[data-personalized="true"] { border-color: #78d7d2; box-shadow: inset 4px 0 0 #78d7d2; }
 .scenario-recommendation[data-personalized="true"] > span { color: #17615e; }
 
@@ -1298,6 +1311,107 @@ html[data-cutaway-open="true"] .operational-hud { display: none; }
 }
 .keeper-stage-label { border-color: #111; box-shadow: inset 4px 0 0 var(--cyan), 0 5px 18px rgba(17,17,17,.08); }
 
+.precompute-contract-label,
+.precompute-detail-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d1d1d1;
+  border-radius: 8px;
+  color: #111;
+  background: rgba(255,255,255,.98);
+  box-shadow: 0 6px 20px rgba(17,17,17,.1);
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-weight: 850;
+  line-height: 1;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.precompute-contract-label {
+  min-height: 34px;
+  padding: 0 11px;
+  font-size: 12px;
+}
+
+.precompute-detail-label {
+  min-height: 28px;
+  padding: 0 9px;
+  color: #3d3d3d;
+  font-size: 10px;
+}
+
+.precompute-contract-label[data-tone="yellow"] { box-shadow: inset 5px 0 0 #ffcc01, 0 6px 20px rgba(17,17,17,.1); }
+.precompute-contract-label[data-tone="cyan"] { box-shadow: inset 5px 0 0 #78d7d2, 0 6px 20px rgba(17,17,17,.1); }
+.precompute-contract-label[data-tone="neutral"] { box-shadow: inset 5px 0 0 #777d79, 0 6px 20px rgba(17,17,17,.1); }
+
+.precompute-stage-readout {
+  display: grid;
+  width: min(390px, 48vw);
+  gap: 5px;
+  padding: 15px 18px;
+  border: 2px solid #111;
+  border-radius: 12px;
+  color: #111;
+  background: rgba(255,255,255,.98);
+  box-shadow: inset 7px 0 0 #ffcc01, 0 10px 32px rgba(17,17,17,.13);
+}
+
+.precompute-stage-readout[data-contract="projection"] { box-shadow: inset 7px 0 0 #78d7d2, 0 10px 32px rgba(17,17,17,.13); }
+.precompute-stage-readout[data-contract="write-amplification"] { box-shadow: inset 7px 0 0 #d64c3f, 0 10px 32px rgba(17,17,17,.13); }
+.precompute-stage-readout span,
+.precompute-stage-readout small {
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  text-transform: uppercase;
+}
+.precompute-stage-readout span { color: #555; font-size: 11px; font-weight: 850; letter-spacing: .07em; }
+.precompute-stage-readout strong { font-size: 19px; line-height: 1.18; }
+.precompute-stage-readout small { color: #414141; font-size: 11px; line-height: 1.35; }
+.precompute-stage-readout--comparison { width: min(430px, 52vw); }
+
+.precompute-choice {
+  display: grid;
+  gap: 16px;
+  margin: 4px 0;
+  padding: 22px !important;
+  border: 2px solid #111 !important;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.precompute-choice > header { display: grid; gap: 7px; }
+.precompute-choice > header h3 { margin: 0 !important; font-size: 23px !important; }
+.precompute-choice > header p { margin: 0; color: #282828; font-size: 16px; line-height: 1.5; }
+.precompute-choice__contrast {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid #d8d8d8;
+  border-radius: 12px;
+}
+.precompute-choice__contrast article { display: grid; gap: 6px; padding: 16px; color: #333; background: #f7f7f4; }
+.precompute-choice__contrast article + article { border-top: 1px solid #d8d8d8; }
+.precompute-choice__contrast article[data-method="materialized-view"] { box-shadow: inset 5px 0 0 #ffcc01; }
+.precompute-choice__contrast article[data-method="projection"] { box-shadow: inset 5px 0 0 #78d7d2; }
+.precompute-choice__contrast article[data-active="true"] { color: #111; background: #fff; }
+.precompute-choice__contrast span { font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; font-size: 11px; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; }
+.precompute-choice__contrast strong { font-size: 16px; line-height: 1.35; }
+.precompute-choice__contrast small { color: #505050; font-size: 13px; line-height: 1.42; }
+.precompute-choice > button {
+  display: inline-flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 2px solid #111;
+  border-radius: 10px;
+  color: #111;
+  background: #ffcc01;
+  font-size: 15px;
+  font-weight: 800;
+}
+.precompute-choice > button:hover { background: #f1c200; }
+
 .inspector-backdrop {
   position: absolute;
   z-index: 25;
@@ -1307,9 +1421,10 @@ html[data-cutaway-open="true"] .operational-hud { display: none; }
 
 .inspector-shell {
   top: 98px;
-  right: 20px;
+  right: auto;
   bottom: 92px;
-  width: 480px;
+  left: 20px;
+  width: 440px;
   border-radius: 20px;
 }
 
@@ -1324,12 +1439,14 @@ html[data-cutaway-open="true"] .operational-hud { display: none; }
   backdrop-filter: none;
 }
 
-.inspector-head { min-width: 0; padding: 10px 56px 26px 0; }
+.inspector { padding: 24px; }
+
+.inspector-head { min-width: 0; padding: 4px 56px 22px 0; }
 .inspector-head h2,
 .world-words h2,
 .about-panel h2 {
   margin: 10px 0;
-  font-size: 36px;
+  font-size: 34px;
   line-height: 1.05;
   overflow-wrap: anywhere;
 }
@@ -1604,6 +1721,21 @@ html[data-cutaway-open="true"] .operational-hud { display: none; }
 }
 
 @media (max-width: 760px) {
+  .precompute-contract-label { min-height: 30px; padding: 0 9px; font-size: 10px; }
+  .precompute-detail-label { display: none; }
+  .precompute-stage-readout,
+  .precompute-stage-readout--comparison {
+    width: min(310px, 82vw);
+    gap: 4px;
+    padding: 12px 14px;
+  }
+  .precompute-stage-readout strong { font-size: 16px; }
+  .precompute-stage-readout span,
+  .precompute-stage-readout small { font-size: 9px; }
+  .precompute-choice { padding: 18px !important; }
+  .precompute-choice > header h3 { font-size: 20px !important; }
+  .precompute-choice > header p { font-size: 15px; }
+
   .inspector-shell:not([data-kind="company"]) {
     top: auto;
     right: 6px;

@@ -86,7 +86,7 @@ test.describe("ClickHouse operational world", () => {
     const telemetry = page.getByRole("region", { name: "ClickHouse model telemetry" });
     await expect(telemetry).toContainText("Tiny inserts");
     await expect(telemetry).toContainText("MODEL · NOT LIVE CLUSTER DATA");
-    await expect(page.getByRole("complementary", { name: "ClickHouse mechanism inspector" })).toContainText("Too-many-parts pressure");
+    await expect(page.getByRole("complementary", { name: "ClickHouse mechanism inspector" })).toContainText("Tiny insert storm");
     await expect(page.locator(".world-canvas").getByText("Every tiny insert creates storage work.", { exact: true })).toBeVisible();
     await expect(page.locator(".world-canvas").getByText("BACKGROUND MERGE · SLOWER", { exact: true })).toBeVisible();
     await expect(page.locator(".world-canvas").getByText("BATCH OR ASYNC BUFFER", { exact: true }).first()).toBeVisible();

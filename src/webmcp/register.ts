@@ -53,6 +53,10 @@ const workloadJsonSchema: JsonSchema = {
     availability: { enum: ["standard", "high"] },
     topology: { enum: ["single-region", "multi-region"] },
     costPriority: { enum: ["performance", "balanced", "cost"] },
+    accelerationGoal: {
+      enum: ["repeated-aggregation", "transform-or-route", "alternate-order", "transparent-acceleration", "none"],
+      description: "Optional bounded intent for choosing an incremental materialized view, a projection, or no derived path.",
+    },
   },
 };
 
@@ -269,7 +273,7 @@ export function createToolDefinitions(): ToolDefinition[] {
     {
       name: "compare_clickhouse_methods",
       title: "Compare ClickHouse methods",
-      description: "Align two reviewed mechanisms, compare argMax with SELECT FINAL, or open two reviewed production implementations side by side.",
+      description: "Align two reviewed mechanisms, compare argMax with SELECT FINAL, compare incremental materialized views with projections, or open two reviewed production implementations side by side.",
       inputSchema: {
         type: "object",
         additionalProperties: false,
@@ -281,7 +285,7 @@ export function createToolDefinitions(): ToolDefinition[] {
         properties: {
           firstId: mechanismJsonSchema,
           secondId: mechanismJsonSchema,
-          comparison: { enum: ["argmax-vs-final"] },
+          comparison: { enum: ["argmax-vs-final", "materialized-view-vs-projection"] },
           firstImplementationId: implementationJsonSchema,
           secondImplementationId: implementationJsonSchema,
         },
@@ -291,7 +295,7 @@ export function createToolDefinitions(): ToolDefinition[] {
         const args = z.object({
           firstId: mechanismSchema.optional(),
           secondId: mechanismSchema.optional(),
-          comparison: z.literal("argmax-vs-final").optional(),
+          comparison: z.enum(["argmax-vs-final", "materialized-view-vs-projection"]).optional(),
           firstImplementationId: implementationSchema.optional(),
           secondImplementationId: implementationSchema.optional(),
         }).strict().superRefine((value, context) => {
@@ -325,10 +329,25 @@ export function createToolDefinitions(): ToolDefinition[] {
           const store = useAtlasStore.getState();
           store.stopJourney();
           store.setScenario("healthy");
-          store.setMergeFamily("replacing");
-          store.setLatestReadStrategy("argmax");
-          store.setLatestReadComparison(args.comparison);
-          return { ok: true, comparison: args.comparison, view: "latest-state-comparison", family: mergeFamilySummary("replacing"), methods: LATEST_READ_STRATEGIES.filter((entry) => entry.id === "argmax" || entry.id === "final") };
+          if (args.comparison === "argmax-vs-final") {
+            store.setMergeFamily("replacing");
+            store.setLatestReadStrategy("argmax");
+            store.setLatestReadComparison(args.comparison);
+            return { ok: true, comparison: args.comparison, view: "latest-state-comparison", family: mergeFamilySummary("replacing"), methods: LATEST_READ_STRATEGIES.filter((entry) => entry.id === "argmax" || entry.id === "final") };
+          }
+          store.selectMechanism("precompute.materialized-view");
+          store.setComparison("precompute.materialized-view", "precompute.projection");
+          return {
+            ok: true,
+            comparison: args.comparison,
+            view: "derived-data-comparison",
+            materializedView: mechanismSummary("precompute.materialized-view"),
+            projection: mechanismSummary("precompute.projection"),
+            decisionInputs: {
+              materializedView: ["repeated-aggregation", "transform-or-route"],
+              projection: ["alternate-order", "transparent-acceleration"],
+            },
+          };
         }
         if (args.firstId === args.secondId) return { ok: false, message: "Choose two different mechanisms." };
         useAtlasStore.getState().selectMechanism(args.firstId!);

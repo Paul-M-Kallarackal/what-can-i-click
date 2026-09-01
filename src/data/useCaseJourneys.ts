@@ -137,6 +137,7 @@ export const USE_CASE_JOURNEYS: UseCaseJourney[] = [
       availability: "standard",
       topology: "single-region",
       costPriority: "balanced",
+      accelerationGoal: "alternate-order",
     },
     familyId: "replacing",
     mechanismPath: [

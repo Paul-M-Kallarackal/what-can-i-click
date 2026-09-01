@@ -42,6 +42,50 @@ test("an in-browser WebMCP agent can stage a bounded architecture path", async (
   await expect(page.getByRole("region", { name: "Agent decision log" })).toBeVisible();
 });
 
+test("materialized views and projections keep different visible contracts", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.addInitScript(() => {
+    const tools: Array<{ name: string; execute: (input: Record<string, unknown>) => Promise<unknown> }> = [];
+    Object.defineProperty(document, "modelContext", { configurable: true, value: { registerTool: (tool: typeof tools[number]) => { tools.push(tool); } } });
+    Object.defineProperty(window, "__atlasTools", { configurable: true, value: tools });
+  });
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => (window as unknown as { __atlasTools: unknown[] }).__atlasTools.length >= 7);
+
+  const inspect = (mechanismId: string) => page.evaluate(async (id) => {
+    const tools = (window as unknown as { __atlasTools: Array<{ name: string; execute: (input: Record<string, unknown>) => Promise<unknown> }> }).__atlasTools;
+    return tools.find((tool) => tool.name === "inspect_clickhouse_mechanism")!.execute({ mechanismId: id });
+  }, mechanismId);
+
+  await inspect("precompute.materialized-view");
+  await expect(page.locator("html")).toHaveAttribute("data-precompute-mode", "materialized-view");
+  await expect(page.locator('.precompute-stage-readout[data-contract="materialized-view"]')).toBeVisible();
+  await expect(page.locator(".world-canvas").getByText("MV SELECT · NEW BLOCK ONLY", { exact: true })).toBeVisible();
+  await expect(page.locator(".world-canvas").getByText("SEPARATE TARGET TABLE", { exact: true })).toBeVisible();
+  await expect(page.locator(".precompute-choice")).toContainText("Inserted block → transform → target table");
+
+  await inspect("precompute.projection");
+  await expect(page.locator("html")).toHaveAttribute("data-precompute-mode", "projection");
+  await expect(page.locator('.precompute-stage-readout[data-contract="projection"]')).toBeVisible();
+  await expect(page.locator(".world-canvas").getByText("SAME TABLE · ATTACHED TO EACH PART", { exact: true })).toBeVisible();
+  await expect(page.locator(".world-canvas").getByText("OPTIMIZER CHOOSES", { exact: true })).toBeVisible();
+  await expect(page.locator(".precompute-choice")).toContainText("Base part + attached alternate layout");
+
+  await page.evaluate(async () => {
+    const tools = (window as unknown as { __atlasTools: Array<{ name: string; execute: (input: Record<string, unknown>) => Promise<unknown> }> }).__atlasTools;
+    await tools.find((tool) => tool.name === "compare_clickhouse_methods")!.execute({ comparison: "materialized-view-vs-projection" });
+  });
+  await expect(page.locator("html")).toHaveAttribute("data-precompute-mode", "comparison");
+  await expect(page.locator('.precompute-stage-readout[data-contract="comparison"]')).toContainText("SAME INPUT · DIFFERENT CONTRACTS");
+  await expect(page.locator(".world-canvas").getByText("MV · TRANSFORM", { exact: true })).toBeVisible();
+  await expect(page.locator(".world-canvas").getByText("PROJECTION · ATTACHED", { exact: true })).toBeVisible();
+  await expect(page.locator(".comparison-grid")).toContainText("View");
+  await expect(page.locator(".comparison-grid")).toContainText("Projection");
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1)).toBe(false);
+  await expect(page.locator('.precompute-stage-readout[data-contract="comparison"]')).toBeVisible();
+});
+
 test("an agent-selected latest-state method stays synchronized with its 3D family machine", async ({ page }) => {
   await page.addInitScript(() => {
     const tools: Array<{ name: string; execute: (input: Record<string, unknown>) => Promise<unknown> }> = [];
@@ -172,7 +216,7 @@ test("a pressure scenario focuses its mechanism and explains how to avoid it", a
   await page.locator(".scenario-picker__trigger").click();
   await page.getByRole("menuitemradio", { name: /Tiny insert storm/ }).click();
   const inspector = page.getByRole("complementary", { name: "ClickHouse mechanism inspector" });
-  await expect(inspector.getByRole("heading", { name: "Too-many-parts pressure" })).toBeVisible();
+  await expect(inspector.getByRole("heading", { name: "Tiny insert storm" })).toBeVisible();
   await expect(inspector.locator(".scenario-recommendation")).toContainText("Batch at the client or use asynchronous inserts");
   await expect(page.locator(".scenario-picker__trigger")).toContainText("Tiny inserts");
 });

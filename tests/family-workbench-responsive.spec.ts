@@ -42,8 +42,8 @@ test.describe("single MergeTree workbench responsiveness", () => {
       await menu.getByRole("menuitemradio", { name: /Tiny insert storm/ }).click();
       const inspector = page.getByRole("complementary", { name: "ClickHouse mechanism inspector" });
       await expect(workbench).toHaveCount(0);
-      await expect(inspector).toContainText("Too-many-parts pressure");
-      await expect(inspector.locator(".scenario-recommendation")).toContainText("Tiny insert storm");
+      await expect(inspector).toContainText("Tiny insert storm");
+      await expect(inspector.locator(".scenario-recommendation")).toContainText("Batch at the client or use asynchronous inserts");
     });
   }
 
@@ -63,7 +63,8 @@ test.describe("single MergeTree workbench responsiveness", () => {
     await menu.getByRole("menuitemradio", { name: /Partition explosion/ }).click();
     const inspector = page.getByRole("complementary", { name: "ClickHouse mechanism inspector" });
     await expect(workbench).toHaveCount(0);
-    await expect(inspector.locator(".scenario-recommendation")).toContainText("Partition explosion");
+    await expect(inspector).toContainText("Partition explosion");
+    await expect(inspector.locator(".scenario-recommendation")).toContainText("Use partitioning for lifecycle boundaries");
     await expect.poll(() => inspector.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);

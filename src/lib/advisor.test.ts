@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { recommendArchitecture, workloadProfileSchema } from "./advisor";
+import { accelerationMechanism, recommendArchitecture, resolveAccelerationGoal, workloadProfileSchema } from "./advisor";
 import { mechanismById } from "../data/mechanisms";
 import type { WorkloadProfile } from "../types";
 
@@ -95,6 +95,39 @@ describe("recommendArchitecture", () => {
     expect(interactive?.evidenceIds).toContain("docs-external-aggregation");
     expect(batch?.recommendation).toContain("site, device, tag");
     expect(batch?.recommendation).toContain("reserve enough temporary storage");
+  });
+
+  it("chooses an explicit MV contract for repeated aggregation or transform routing", () => {
+    for (const accelerationGoal of ["repeated-aggregation", "transform-or-route"] as const) {
+      const result = recommendArchitecture({ ...base, workload: "cdc", latencyTarget: "seconds", accelerationGoal });
+      const decision = result.decisions.find((entry) => entry.mechanismId === "precompute.materialized-view");
+
+      expect(decision?.recommendation).toContain("explicit target table");
+      expect(decision?.recommendation).toContain("Backfill");
+      expect(result.validationSteps.some((step) => step.includes("only that block feeds"))).toBe(true);
+      expect(result.validationSteps.some((step) => step.includes("source slice"))).toBe(true);
+    }
+  });
+
+  it("chooses an attached projection for alternate order or transparent acceleration", () => {
+    for (const accelerationGoal of ["alternate-order", "transparent-acceleration"] as const) {
+      const result = recommendArchitecture({ ...base, accelerationGoal });
+      const decision = result.decisions.find((entry) => entry.mechanismId === "precompute.projection");
+
+      expect(decision?.recommendation).toContain("base table");
+      expect(decision?.recommendation).toContain("EXPLAIN projections = 1");
+      expect(result.validationSteps.some((step) => step.includes("EXPLAIN projections = 1"))).toBe(true);
+    }
+  });
+
+  it("honors a bounded opt-out and keeps deterministic defaults", () => {
+    expect(resolveAccelerationGoal(base)).toBe("repeated-aggregation");
+    expect(accelerationMechanism("repeated-aggregation")).toBe("precompute.materialized-view");
+    expect(accelerationMechanism("alternate-order")).toBe("precompute.projection");
+    expect(accelerationMechanism("none")).toBeNull();
+
+    const result = recommendArchitecture({ ...base, accelerationGoal: "none" });
+    expect(result.path.some((id) => id.startsWith("precompute."))).toBe(false);
   });
 
   it("protects merge capacity when frequent updates overlap retention work", () => {

@@ -11,6 +11,7 @@ export const workloadProfileSchema = z.object({
   availability: z.enum(["standard", "high"]),
   topology: z.enum(["single-region", "multi-region"]),
   costPriority: z.enum(["performance", "balanced", "cost"]),
+  accelerationGoal: z.enum(["repeated-aggregation", "transform-or-route", "alternate-order", "transparent-acceleration", "none"]).optional(),
 }).strict();
 
 function decision(input: Omit<ArchitectureDecision, "id" | "districtId">): ArchitectureDecision {
@@ -43,11 +44,29 @@ const aggregationRisk: Record<WorkloadProfile["workload"], string> = {
   general: "the widest ad-hoc GROUP BY combinations your users can request",
 };
 
+type AccelerationGoal = NonNullable<WorkloadProfile["accelerationGoal"]>;
+
+export function resolveAccelerationGoal(profile: WorkloadProfile): AccelerationGoal {
+  if (profile.accelerationGoal) return profile.accelerationGoal;
+  if (profile.workload === "product-analytics" || profile.workload === "observability") return "repeated-aggregation";
+  if ((profile.workload === "iot" || profile.workload === "financial") && profile.latencyTarget === "interactive") return "repeated-aggregation";
+  if (profile.workload === "general" && profile.latencyTarget === "interactive") return "transparent-acceleration";
+  return "none";
+}
+
+export function accelerationMechanism(goal: AccelerationGoal): MechanismId | null {
+  if (goal === "repeated-aggregation" || goal === "transform-or-route") return "precompute.materialized-view";
+  if (goal === "alternate-order" || goal === "transparent-acceleration") return "precompute.projection";
+  return null;
+}
+
 export function recommendArchitecture(rawProfile: WorkloadProfile): ArchitectureRecommendation {
   const profile = workloadProfileSchema.parse(rawProfile);
   const decisions: ArchitectureDecision[] = [];
   const path: MechanismId[] = [];
   const tradeoffs: Tradeoff[] = [];
+  const accelerationGoal = resolveAccelerationGoal(profile);
+  const accelerationId = accelerationMechanism(accelerationGoal);
   const managedStream = profile.workload === "cdc" || profile.workload === "iot";
   const ingestionId: MechanismId = managedStream
     ? "ingestion.clickpipes"
@@ -132,22 +151,32 @@ export function recommendArchitecture(rawProfile: WorkloadProfile): Architecture
     evidenceIds: ["docs-primary-index", profile.workload === "financial" ? "qrt" : "cloudflare"],
   }));
 
-  if (profile.latencyTarget === "interactive" || profile.workload === "product-analytics" || profile.workload === "observability") {
-    const projectionFirst = profile.workload === "general" || profile.updates === "frequent";
-    const mechanismId: MechanismId = projectionFirst ? "precompute.projection" : "precompute.materialized-view";
-    path.push(mechanismId);
+  if (accelerationId) {
+    const materializedView = accelerationId === "precompute.materialized-view";
+    const repeatedAggregate = accelerationGoal === "repeated-aggregation";
+    path.push(accelerationId);
     decisions.push(decision({
-      mechanismId,
-      title: projectionFirst ? "Projection for alternate reads" : "Incremental materialized view",
-      recommendation: projectionFirst
-        ? "Use a projection only for a stable alternate sort or pre-aggregation the optimizer can select."
-        : "Maintain repeated dashboard aggregates in an incremental materialized view with an explicit target table.",
-      rationale: "Repeated interactive questions should not rescan and regroup the full event history.",
-      alternatives: projectionFirst ? ["Second explicitly queried table", "Incremental materialized view"] : ["Projection", "Query-time aggregation"],
-      confidence: "high",
-      evidenceIds: [projectionFirst ? "docs-projections" : "docs-materialized-views", profile.workload === "product-analytics" ? "rill" : "clickhouse-internal"],
+      mechanismId: accelerationId,
+      title: materializedView
+        ? repeatedAggregate ? `${profile.workload.replace("-", " ")} aggregate target` : `${profile.workload.replace("-", " ")} transform target`
+        : accelerationGoal === "alternate-order" ? `${profile.workload.replace("-", " ")} alternate order` : "Transparent same-table acceleration",
+      recommendation: materializedView
+        ? repeatedAggregate
+          ? `Maintain the repeated ${profile.workload.replace("-", " ")} aggregate from each newly inserted block in an explicit target table, then query that target directly. Backfill existing rows separately and test how source mutations or partition operations are reconciled.`
+          : `Use an incremental materialized view to transform, filter, or route each newly inserted ${profile.workload.replace("-", " ")} block into an explicit target table. Backfill history separately; do not assume later source mutations synchronize the target.`
+        : `Attach a projection to the base table for the stable ${accelerationGoal === "alternate-order" ? "alternate ORDER BY" : "alternate access path"} while callers continue querying the base table. Materialize existing parts, then prove optimizer selection with EXPLAIN projections = 1.`,
+      rationale: materializedView
+        ? `This ${profile.latencyTarget} path deliberately shifts repeated work into ${profile.ingestRate} insert traffic and produces a separately modeled result.`
+        : `The requested speedup is another representation of the same rows, so keeping it attached to each base part avoids introducing a separately addressed target table.`,
+      alternatives: materializedView
+        ? ["Projection when the result is the same table in another stable layout", "Query-time aggregation for genuinely ad-hoc questions"]
+        : ["Incremental materialized view for a separately modeled transform or aggregate", "Second explicitly queried table when optimizer transparency is not required"],
+      confidence: profile.accelerationGoal ? "high" : "medium",
+      evidenceIds: [materializedView ? "docs-materialized-views" : "docs-projections", profile.workload === "product-analytics" ? "rill" : "clickhouse-internal"],
     }));
-    tradeoffs.push({ benefit: "Precomputation makes common reads predictable.", cost: "Insert work, storage, and backfill procedures increase." });
+    tradeoffs.push(materializedView
+      ? { benefit: "A separately modeled target makes repeated transforms and aggregates cheap to read.", cost: "Every insert performs extra work; history and source-side rewrites need explicit synchronization procedures." }
+      : { benefit: "The optimizer can accelerate the existing base-table query with an attached representation.", cost: "Projection storage, materialization, and background maintenance must be justified and optimizer use must be verified." });
   }
 
   path.push("execution.sort-aggregate", "memory.memory-tracker", "memory.external-spill", "observability.processes");
@@ -258,6 +287,14 @@ export function recommendArchitecture(rawProfile: WorkloadProfile): Architecture
       "Record granules selected versus total granules for the highest-volume query shapes; reject an ORDER BY candidate that scatters a common filter across most ranges.",
       `Benchmark ${aggregationRisk[profile.workload]} at expected and worst-case cardinality; record peak memory, temporary spill I/O, and elapsed time before accepting the external GROUP BY threshold.`,
       "Benchmark the common dashboard and worst-case query at expected concurrency.",
+      ...(accelerationId === "precompute.materialized-view" ? [
+        "Insert a known block and verify that only that block feeds the incremental materialized-view transform and explicit target table.",
+        "Backfill a historical slice separately, mutate or drop a controlled source slice, and verify the target-table reconciliation procedure instead of assuming automatic synchronization.",
+        "Compare insert latency, target part creation, target merge pressure, and dashboard latency before and after enabling the view.",
+      ] : accelerationId === "precompute.projection" ? [
+        "Materialize the projection for existing parts, then use EXPLAIN projections = 1 to prove representative queries select it instead of the base layout.",
+        "Compare bytes read, marks read, insert latency, projection storage, and background maintenance before accepting the projection.",
+      ] : []),
       ...(path.some((id) => id.startsWith("architecture")) ? [
         "Fail one replica and verify recovery, routing, and Keeper quorum behavior.",
         "Remove one Keeper voter and verify the remaining 2 / 3 majority stays writable; then isolate a second voter, confirm replicated writes pause without moving part bytes through Keeper, restore the majority, and verify sessions and queued work recover.",
