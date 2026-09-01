@@ -1,40 +1,35 @@
-import { Pause, Play, RotateCcw, Sparkles } from "lucide-react";
-import { currentStoryNode, useAtlasStore } from "../../store/useAtlasStore";
-import { knowledgeById } from "../../data/knowledge";
-
-const SPEEDS = [0.25, 1, 2, 4];
+import { ChevronUp, Gauge, Pause, Play, RotateCcw } from "lucide-react";
+import { useState } from "react";
+import { OPERATIONAL_SCENARIOS, operationalScenarioById } from "../../data/operationalScenarios";
+import { useAtlasStore } from "../../store/useAtlasStore";
 
 export function SimulationControls() {
+  const [scenarioOpen, setScenarioOpen] = useState(false);
   const playing = useAtlasStore((state) => state.playing);
-  const speed = useAtlasStore((state) => state.speed);
-  const storyMode = useAtlasStore((state) => state.storyMode);
-  const activeId = useAtlasStore((state) => currentStoryNode(state));
-  const simulationTime = useAtlasStore((state) => state.simulationTime);
-  const togglePlaying = useAtlasStore((state) => state.togglePlaying);
-  const setSpeed = useAtlasStore((state) => state.setSpeed);
-  const playStory = useAtlasStore((state) => state.playStory);
-  const reset = useAtlasStore((state) => state.reset);
-  const active = activeId ? knowledgeById(activeId) : null;
-
+  const scenario = useAtlasStore((state) => state.scenario);
+  const operationalScenario = operationalScenarioById(scenario);
   return (
     <div className="simulation-dock" aria-label="Simulation controls">
-      <button className="play-control" type="button" onClick={togglePlaying} aria-label={playing ? "Pause simulation" : "Play simulation"}>
+      <button className="play-control" type="button" onClick={() => useAtlasStore.getState().togglePlaying()} aria-label={playing ? "Pause simulation" : "Play simulation"}>
         <span className="t-icon-swap" data-state={playing ? "a" : "b"}>
           <span className="t-icon" data-icon="a"><Pause size={16} /></span>
           <span className="t-icon play-triangle" data-icon="b"><Play size={16} /></span>
         </span>
       </button>
-      <div className="timeline-status">
-        <span className="eyebrow">{storyMode ? `${storyMode} story` : "Living system"}</span>
-        <strong>{active ? active.shortTitle : "All mechanisms"}</strong>
-        <small className="tabular">{simulationTime.toFixed(1)} garden seconds</small>
+      <div className="scenario-picker">
+        <button className="scenario-picker__trigger" type="button" data-pressure={scenario !== "healthy"} aria-haspopup="menu" aria-expanded={scenarioOpen} onClick={() => setScenarioOpen((open) => !open)}>
+          <Gauge size={14} /><span><small>Scenario</small><strong>{operationalScenario.shortTitle}</strong></span><ChevronUp size={13} />
+        </button>
+        <div className="scenario-picker__menu" data-open={scenarioOpen} role="menu" aria-label="ClickHouse operational scenarios">
+          <header><span>ClickHouse pressure lab</span><strong>Change one cause. Watch the whole machine respond.</strong></header>
+          {OPERATIONAL_SCENARIOS.filter((entry) => entry.id !== "pressure").map((entry) => (
+            <button key={entry.id} type="button" role="menuitemradio" aria-checked={scenario === entry.id} data-active={scenario === entry.id} onClick={() => { useAtlasStore.getState().setScenario(entry.id); setScenarioOpen(false); }}>
+              <span><strong>{entry.title}</strong><small>{entry.description}</small></span><em>{entry.setting}<b>{entry.settingValue}</b></em>
+            </button>
+          ))}
+        </div>
       </div>
-      <div className="speed-control" aria-label="Simulation speed">
-        {SPEEDS.map((value) => <button key={value} type="button" data-active={speed === value} onClick={() => setSpeed(value)}>{value}×</button>)}
-      </div>
-      <button className="dock-action lifecycle-action" type="button" onClick={() => playStory("lifecycle")}><Sparkles size={15} />Play lifecycle</button>
-      <button className="icon-button dock-reset" type="button" onClick={reset} aria-label="Reset world"><RotateCcw size={16} /></button>
+      <button className="step-control" type="button" onClick={() => useAtlasStore.getState().reset()} aria-label="Reset foundry"><RotateCcw size={15} /></button>
     </div>
   );
 }
-

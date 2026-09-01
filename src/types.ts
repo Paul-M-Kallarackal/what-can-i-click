@@ -1,20 +1,114 @@
-export type Tempo =
-  | "immediate"
-  | "fast"
-  | "streaming"
-  | "background"
-  | "heavy"
-  | "blocking";
+export type Tempo = "immediate" | "fast" | "streaming" | "background" | "heavy" | "blocking";
+
+export type MergeFamilyId = "merge" | "replacing" | "summing" | "aggregating" | "collapsing" | "versioned-collapsing" | "coalescing";
+export type LatestReadStrategy = "background" | "argmax" | "final";
 
 export type DistrictId =
   | "ingestion"
   | "mergetree"
-  | "read-path"
-  | "aggregation"
+  | "read"
+  | "precompute"
   | "architecture"
-  | "retention";
+  | "retention"
+  | "memory"
+  | "execution"
+  | "durability"
+  | "storage"
+  | "observability";
+
+export type MechanismId =
+  | "ingestion.client-batching"
+  | "ingestion.async-buffer"
+  | "ingestion.clickpipes"
+  | "ingestion.cdc"
+  | "ingestion.backpressure"
+  | "mergetree.part-anatomy"
+  | "mergetree.partition-boundary"
+  | "mergetree.merge-selection"
+  | "mergetree.sorted-merge"
+  | "mergetree.part-lifecycle"
+  | "mergetree.parts-pressure"
+  | "mergetree.forced-merge"
+  | "read.ordering"
+  | "read.sparse-index"
+  | "read.granules"
+  | "read.column-pruning"
+  | "read.data-skipping"
+  | "read.parallel-pipeline"
+  | "read.saved-work"
+  | "precompute.materialized-view"
+  | "precompute.aggregate-states"
+  | "precompute.projection"
+  | "precompute.optimizer-choice"
+  | "precompute.write-amplification"
+  | "architecture.sharding"
+  | "architecture.distributed-query"
+  | "architecture.replication"
+  | "architecture.keeper"
+  | "architecture.failure"
+  | "architecture.recovery"
+  | "architecture.multi-region"
+  | "retention.ttl-delete"
+  | "retention.ttl-move"
+  | "retention.ttl-recompress"
+  | "retention.ttl-aggregate"
+  | "retention.mutation"
+  | "retention.backup"
+  | "retention.restore"
+  | "memory.os-page-cache"
+  | "memory.mark-cache"
+  | "memory.uncompressed-cache"
+  | "memory.query-cache"
+  | "memory.memory-tracker"
+  | "memory.external-spill"
+  | "execution.analyzer"
+  | "execution.explain-plan"
+  | "execution.join-strategy"
+  | "execution.sort-aggregate"
+  | "execution.processor-pipeline"
+  | "execution.workload-scheduler"
+  | "durability.part-commit"
+  | "durability.async-ack"
+  | "durability.insert-quorum"
+  | "durability.replication-log"
+  | "storage.disks-volumes"
+  | "storage.storage-policy"
+  | "storage.object-storage"
+  | "storage.filesystem-cache"
+  | "storage.compression-codecs"
+  | "observability.query-log"
+  | "observability.part-log"
+  | "observability.merges"
+  | "observability.replication-queue"
+  | "observability.processes"
+  | "observability.profile-events";
 
 export type EvidenceKind = "official" | "derived" | "field";
+export type StoryMode = "lifecycle" | "architecture" | null;
+export type ScenarioMode =
+  | "healthy"
+  | "pressure"
+  | "tiny-insert-storm"
+  | "partition-explosion"
+  | "merge-ttl-contention"
+  | "bad-order-by"
+  | "aggregation-spill"
+  | "replica-lag"
+  | "keeper-quorum-loss";
+export type ViewLevel = "system" | "mechanism" | "xray";
+export type SimulationEventType =
+  | "arrive"
+  | "buffer"
+  | "flush"
+  | "merge"
+  | "scan"
+  | "replicate"
+  | "expire"
+  | "cache"
+  | "plan"
+  | "commit"
+  | "store"
+  | "observe";
 
 export type WorkloadProfile = {
   workload: "observability" | "product-analytics" | "cdc" | "iot" | "financial" | "general";
@@ -27,21 +121,13 @@ export type WorkloadProfile = {
   costPriority: "performance" | "balanced" | "cost";
 };
 
-export type EvidenceReference = {
-  id: string;
-  label: string;
-  url: string;
-  kind: EvidenceKind;
-};
-
-export type Tradeoff = {
-  benefit: string;
-  cost: string;
-};
+export type EvidenceReference = { id: string; label: string; url: string; kind: EvidenceKind };
+export type Tradeoff = { benefit: string; cost: string };
 
 export type ArchitectureDecision = {
   id: string;
-  nodeId: DistrictId;
+  mechanismId: MechanismId;
+  districtId: DistrictId;
   title: string;
   recommendation: string;
   rationale: string;
@@ -53,18 +139,28 @@ export type ArchitectureDecision = {
 export type ArchitectureRecommendation = {
   id: string;
   summary: string;
-  path: DistrictId[];
+  path: MechanismId[];
   decisions: ArchitectureDecision[];
   tradeoffs: Tradeoff[];
   validationSteps: string[];
   evidence: EvidenceReference[];
 };
 
-export type MotionProfile = {
-  tempo: Tempo;
-  critter: "beetle" | "firefly" | "hummingbird" | "snail" | "roots" | "leaves";
-  metaphor: string;
-  reducedMotionState: string;
+export type CameraPose = {
+  position: readonly [number, number, number];
+  target: readonly [number, number, number];
+  zoom: number;
+};
+
+export type SemanticTransition = { from: string; to: string; label: string };
+
+export type SimulationEvent = {
+  at: number;
+  type: SimulationEventType;
+  subjectId: MechanismId;
+  fromState: string;
+  toState: string;
+  narration: string;
 };
 
 export type Claim = {
@@ -75,19 +171,37 @@ export type Claim = {
   source: EvidenceReference;
 };
 
-export type KnowledgeNode = {
-  id: DistrictId;
-  district: string;
+export type MechanismSpec = {
+  id: MechanismId;
+  districtId: DistrictId;
   title: string;
   shortTitle: string;
   tagline: string;
   explanation: string;
-  motion: MotionProfile;
-  tradeoffs: Tradeoff[];
+  tempo: Tempo;
+  cameraPose: CameraPose;
+  markerPosition: readonly [number, number, number];
+  states: string[];
+  transitions: SemanticTransition[];
+  healthyScenarioId: string;
+  pressureScenarioId?: string;
+  claimIds: string[];
   claims: Claim[];
-  relatedNodeIds: DistrictId[];
+  tradeoffs: Tradeoff[];
+  relatedMechanismIds: MechanismId[];
+  misconception: string;
+  reducedMotionSummary: string;
+};
+
+export type DistrictSpec = {
+  id: DistrictId;
+  index: number;
+  title: string;
+  shortTitle: string;
+  description: string;
   position: readonly [number, number, number];
   accent: string;
+  mechanismIds: MechanismId[];
 };
 
 export type CompanyEvidence = {
@@ -102,6 +216,3 @@ export type CompanyEvidence = {
   source: EvidenceReference;
   relatedNodeIds: DistrictId[];
 };
-
-export type StoryMode = "lifecycle" | "architecture" | null;
-

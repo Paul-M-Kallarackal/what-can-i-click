@@ -1,15 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { COMPANY_EVIDENCE } from "./evidence";
-import { KNOWLEDGE_NODES } from "./knowledge";
+import { DISTRICTS, MECHANISMS } from "./mechanisms";
 
-describe("reviewed atlas data", () => {
-  it("ships exactly six fully sourced hero mechanisms", () => {
-    expect(KNOWLEDGE_NODES).toHaveLength(6);
-    for (const node of KNOWLEDGE_NODES) {
-      expect(node.claims.length).toBeGreaterThan(0);
-      expect(node.tradeoffs.length).toBeGreaterThan(0);
-      expect(node.motion.metaphor).toBeTruthy();
-      expect(node.motion.reducedMotionState).toBeTruthy();
+describe("reviewed ClickHouse knowledge world", () => {
+  it("ships eleven districts and all 65 inspectable ClickHouse mechanisms", () => {
+    expect(DISTRICTS).toHaveLength(11);
+    expect(MECHANISMS).toHaveLength(65);
+    expect(new Set(MECHANISMS.map((mechanism) => mechanism.id)).size).toBe(65);
+
+    for (const mechanism of MECHANISMS) {
+      expect(mechanism.claims.length).toBeGreaterThan(0);
+      expect(mechanism.tradeoffs.length).toBeGreaterThan(0);
+      expect(mechanism.states).toHaveLength(3);
+      expect(mechanism.transitions).toHaveLength(2);
+      expect(mechanism.reducedMotionSummary).toBeTruthy();
+      expect(mechanism.claimIds.length).toBeGreaterThan(0);
     }
   });
 
@@ -18,4 +23,3 @@ describe("reviewed atlas data", () => {
     expect(COMPANY_EVIDENCE.every((entry) => entry.version === "Not disclosed")).toBe(true);
   });
 });
-

@@ -2,4 +2,3 @@ The ClickHouse logomark in this directory is an unmodified official brand
 asset downloaded from https://clickhouse.com. ClickHouse and its logo are
 trademarks of ClickHouse, Inc. What can I Click is an independent educational
 project and is not endorsed by or affiliated with ClickHouse, Inc.
-

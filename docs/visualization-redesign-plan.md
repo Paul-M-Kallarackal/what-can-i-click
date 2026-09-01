@@ -1,265 +1,140 @@
-# What can I Click — Visualization Redesign
-
-## Decision
-
-Remove the bonsai archipelago completely. The next version is a transparent, kinetic **ClickHouse data machine**: one continuous system assembled from six mechanism-specific chambers. The visitor should feel as if the ClickHouse logo has opened into a museum cutaway and exposed the path from arriving rows to retained or expired data.
-
-This is not a reskin. The pot, trunk, foliage, island, root-connection, spore, and nature-critter components will be deleted. The advisor, evidence corpus, WebMCP boundary, and renderer-independent clock remain useful and will be migrated to a more granular mechanism registry.
+# What can I Click — Current Visualization Contract
 
 ## Product thesis
 
-The screen has one job: **make the recommended ClickHouse architecture visibly explain itself.** A user should understand within ninety seconds where work happens, whether it is immediate, streaming, background, heavy, or blocking, and what becomes stressed when a choice is wrong.
+What can I Click has two jobs:
 
-## Signature experience: the ClickHouse cutaway
+1. Make ClickHouse gotchas visually understandable before a visitor reads documentation.
+2. Let a WebMCP agent turn those lessons into a bounded, evidence-backed recommendation for the visitor's workload.
 
-Four yellow columns—an original three-dimensional interpretation of the ClickHouse mark rather than a modified logo asset—separate like instrument housings and reveal a continuous data line running through six chambers. Each chamber has a different silhouette because each mechanism does different work.
+The manual interface is intentionally narrow. It opens on one clean MergeTree foundry, one current-scenario card, and one compact scenario control. Search, family grids, production chips, a text-heavy system map, speed controls, and canned use-case launchers are not part of the visible shell.
 
-Selection has three zoom levels:
+When WebMCP explicitly focuses another reviewed MergeTree-family engine, the same workbench becomes an agent-selected recommendation card instead of resetting the request. It shows the engine's merge contract, when it fits, its main correctness trap, and a direct route back to plain MergeTree. ReplacingMergeTree also exposes the selected latest-state method. Background convergence, `argMax`, and `SELECT FINAL` each run a distinct deterministic observe → evaluate → resolve → emit choreography in the 3D machine, with relative read work shown semantically rather than as an invented benchmark.
 
-1. **System view** — all six chambers and the end-to-end route.
-2. **Mechanism view** — one chamber fills the stage and exposes controls, states, and tradeoffs.
-3. **X-ray view** — a part, granule, projection, replica, or TTL action opens to show its internal structure.
+The bounded `argmax-vs-final` comparison is also agent-only. It uses one shared set of version candidates and two parallel lanes: cyan computes an explicit `(version, tie-breaker)` winner with `argMax`, while yellow applies ReplacingMergeTree rules through `SELECT FINAL`. Both return the same logical v3 row in the reviewed example; the visualization compares the contract and relative read work, not an invented latency number. Choosing any single family, strategy, scenario, mechanism, journey, or evidence item clears comparison state.
 
-Rows are short yellow bars, columns are vertical bands, parts are sealed transparent cassettes, index marks are black notches, background work is amber, query work is cyan-white, coordination is violet, and destructive or pressured states are vermilion.
+CoalescingMergeTree has two separate sparse-update paths. Background mode uses a slow mosaic kiln: fragments can remain split across parts until an eligible merge assembles the stored row. `SELECT FINAL` uses a query-time mosaic light table: a bounded read collects the fragments immediately, applies the rule that NULL means “no update,” and returns one assembled row while showing higher read work. A family inspection without an explicit strategy always resets to reviewed background behavior rather than inheriting stale state.
 
-## Complete visualization inventory
+SummingMergeTree separates storage reduction from read correctness in one deterministic counter line. One background merge visibly compacts equal-key Parts A (`+5`) and B (`+7`) into a stored partial (`12`) while a newer equal-key part (`+4`) remains in another part. The exact-read lane then aggregates every visible row and returns `16`. The agent-only card repeats that contract and recommends a separate raw MergeTree table when the rollup must not discard detail.
 
-“All mechanisms” means every major concept promised by the hackathon scope below. It does not mean every ClickHouse setting or table engine.
+AggregatingMergeTree uses an `avgState` refinery to make mergeable internals tangible. The input capsules retain `(sum, count)` pairs `(20, 2)` and `(90, 3)`, the background state reactor produces `(110, 5)`, and the read-side `avgMerge + GROUP BY` gate finalizes `22`. The agent card distinguishes `AggregateFunction` state storage from the separate scalar contract of `SimpleAggregateFunction`.
 
-### 1. Ingestion chamber — the arrival manifold
+CollapsingMergeTree uses the documented three-row history: old state `(5 views, 146s, +1)`, exact cancel copy `(5, 146, -1)`, and replacement `(6, 185, +1)`. The old/cancel pair aligns and descends through a later background-collapse gate while the replacement survives. A separate exact-read lane accounts for `Sign` before convergence and distinguishes sign-aware aggregation from bounded `FINAL` row extraction.
 
-| Mechanism | Visualization | Visible transition | Lesson |
+VersionedCollapsingMergeTree accepts the same logical history out of order. The demonstration deliberately receives v2 state first, v1 cancel second, and v1 state last. A physical version router sends both v1 rows to one pair lane and v2 to another; only the same-key, same-version, opposite-sign v1 pair collapses. The v2 state remains visibly current, and the agent card warns that a mis-versioned cancel cannot remove it.
+
+## Hero scene: the MergeTree foundry
+
+The foundry shows the real storage lifecycle with a memorable physical analogy:
+
+- Each white cassette is one immutable data part.
+- Cyan and yellow top plates identify Parts A and B while both retain the same cassette geometry.
+- Visible front bands represent column files.
+- A working crane lifts Part B from the intake lane and places it beside Part A.
+- The black merge worker reads compatible sorted parts and writes a full-size Part C.
+- Part C preserves rows from A and B in its visible row ribbon.
+- A and B become inactive only after Part C commits.
+- Retired A and B move into an open old-parts bin positioned behind the worker.
+- The bin never hides the worker, Part C output lane, or crane handoff.
+- An original low-poly tree stands behind the machine as a MergeTree landmark. It supports the name and composition but never replaces the causal storage visualization.
+
+The legend, labels, and animation must agree. Geometry cannot change identity or scale during a handoff unless the change represents a documented lifecycle transition.
+
+## Scenario-first gotcha lab
+
+The visible scenario menu contains one reference state and seven controlled failure modes:
+
+| Scenario | Cause shown | Consequence shown | Recommendation focus |
 | --- | --- | --- | --- |
-| Client batching | Row bars collect in a measuring hopper and lock into a cassette | Loose rows → threshold → sealed batch | Larger, less frequent inserts reduce per-insert overhead |
-| Asynchronous inserts | Client tubes feed a transparent shared buffer with size and timeout gauges | Concurrent trickles → buffer → flush → acknowledgement | Server buffering helps clients that cannot coordinate batches |
-| Kafka/ClickPipes | A braided conveyor carries ordered envelopes through a checkpoint wheel | Offset advances, batch commits, checkpoint follows | Managed streaming owns connector, offset, and retry work |
-| CDC changes | Insert, update, and delete envelopes use distinct edge markings on one append path | Source log event → row version → table input | CDC is append-oriented before it is deduplication-oriented |
-| Backpressure | The manifold narrows and a pressure membrane expands | Arrival outruns flush → queue rises → controlled throttle | Buffers move pressure; they do not remove it |
+| Steady ClickHouse | Batched inserts and bounded work | Parts merge and reads stay selective | Preserve headroom and observe trends |
+| Tiny insert storm | Independent single-row writes each stamp a tiny immutable part | A modeled 18 creations outrun two retirements, backlog grows, and part limits throttle inserts | A separate lane highlights client batching, async inserts, or preserved connector batching from the agent’s workload recommendation |
+| Partition explosion | One block fans across 480 partition values, represented by six deterministic bays | Parts remain trapped in isolated merge pools | Keep lifecycle boundaries coarse and preserve query locality in ORDER BY; the correction lane adopts the agent’s retention-shaped recommendation |
+| Merge + TTL + mutation contention | TTL and mutation rewrites occupy an explicitly modeled scheduling/storage-capacity chamber while normal merges wait | Merge queue age and active parts rise before the chamber shows recovery | Move broad rewrites into a protected maintenance window; the scene and WebMCP response adopt the agent’s ingest-, retention-, and update-shaped guidance without claiming a literal server worker count |
+| ORDER BY misses the filter | One representative filter value is first scattered across 11 of 12 illustrated granules, then physically clustered into two adjacent granules | The same small result changes from an 11-range candidate scan to a two-range model while ten surrounding ranges become skippable | Build the key from representative workload filters and validate with `EXPLAIN indexes = 1`; the corrected-order rail adopts the agent’s workload-shaped ordering decision and explicitly labels the counts as illustrative |
+| Aggregation spills to disk | Distinct group keys grow partial states until the configured memory threshold is crossed | Three representative temporary runs leave RAM, then an external merge finalizes the groups with additional I/O | Treat spill as a tested completion guardrail rather than acceleration; the result-stage prevention deck adopts the agent’s latency- and workload-shaped choice to filter earlier, precompute repeated work, or deliberately provision the batch spill path |
+| Replica queue falls behind | Keeper records the operation while compressed part bytes use a visibly separate replica data path; arrivals then outrun destination fetch/storage capacity | Queue depth and oldest-task age rise together, with `GET_PART` and `MERGE_PARTS` tasks exposed independently from Keeper | Diagnose task mix, depth, age, retries, postpone reasons, and exceptions before changing capacity; the catch-up deck adopts the agent’s topology/ingest recommendation and requires both depth and oldest age to return to a tested baseline |
+| Keeper quorum unavailable | K2 and K3 disconnect so the ensemble falls from 3/3 to 1/3; recovery reconnects K2 before K3 | At 1/3 replicated writes queue while local reads continue from replica parts; the visible 2/3 majority reopens coordination and drains the queue before full 3/3 convergence | Place the odd voting ensemble in independent failure domains, prove one-voter loss retains 2/3, and adopt the agent’s availability/topology-shaped Keeper decision when present |
 
-Healthy mode shows full cassettes at a calm cadence. Pressure mode sends single-row cassettes toward the part chamber until the lane crowds.
+Each scenario has its own 3D mechanism, an inspector explanation, a short “how to avoid this” recommendation, and mobile summary. When WebMCP has staged a workload, the owning scenario card and story output replace the generic advice with the matching reviewed architecture decision. Exact timings appear only when a pinned source supports them; illustrative counts are explicitly modeled rather than presented as cluster measurements.
 
-### 2. MergeTree chamber — the part foundry
+## Visual language
 
-| Mechanism | Visualization | Visible transition | Lesson |
-| --- | --- | --- | --- |
-| Immutable part | A cassette splits into column bands, marks, index strip, checksums, and metadata | Insert block → sorted self-contained part | A part is a structured immutable unit |
-| Partition boundary | Parts land in separated foundry bays | Same-bay parts can merge; cross-bay parts cannot | Partitioning controls lifecycle and merge eligibility |
-| Merge selection | A scheduler arm weighs size, age, and compatibility | Scan → compatible set → queued merge | Merges are resource-governed background work |
-| Sorted merge pass | Two row ribbons interleave through a zipper into a larger cassette | Source parts → linear merge → replacement | Sorted parts avoid random updates and re-sorting |
-| Active/inactive lifecycle | Sources turn translucent after commit and leave after readers release them | Active → inactive/referenced → removed | Cleanup follows atomic replacement |
-| Too-many-parts pressure | Small cassettes pile up faster than the arm consumes them | Queue, metadata markers, and pressure rise | Tiny inserts can outpace consolidation |
-| Forced large merge | A manual override bypasses the gauge and pulls oversized cassettes | Safeguard bypass → I/O spike → other lanes slow | `OPTIMIZE ... FINAL` is not routine maintenance |
-
-This is the visual centerpiece. Its X-ray part cutaway is the most detailed object in the product.
-
-### 3. Read chamber — the query scanner
-
-| Mechanism | Visualization | Visible transition | Lesson |
-| --- | --- | --- | --- |
-| Physical ordering | Rows lie along an ORDER BY rail | Unsorted ghost disappears; contiguous bands remain | Ordering creates locality before queries arrive |
-| Sparse index | A thin notch rail sits above thousands of row bars | Predicate lands between marks; a range is chosen | The primary index represents granules, not rows |
-| Granules and marks | A selected part opens into row blocks with mark pins | Whole granules dim when they cannot match | Reads happen at granule resolution |
-| Column pruning | Unrequested vertical bands stay locked while selected columns lift | Selected columns enter the scanner | Columnar storage avoids unrelated I/O |
-| Data skipping | Secondary gates test remaining granules | Candidate → test → read or discard | Skip indexes are workload-specific filters |
-| Parallel pipeline | Selected bands divide across synchronized lanes and reconverge | Read → filter → aggregate → result | Fast scans consume CPU and memory through parallelism |
-| Saved work | Rejected ranges remain as desaturated wireframes | Large total volume → small read volume | Speed comes from avoiding work |
-
-The visitor can scrub one query from predicate to result. Skipped regions stay visible so the saved work is legible.
-
-### 4. Precomputation chamber — the derived-data switchyard
-
-| Mechanism | Visualization | Visible transition | Lesson |
-| --- | --- | --- | --- |
-| Incremental materialized view | Each block passes a transform press and emits a target-table cassette | Insert block → transform → target part | Repeated computation moves to insert time |
-| Aggregate states | Thousands of bars collapse into mergeable state cells | Raw rows → partial → merged → finalized | States preserve composability across parts |
-| Projection | A base cassette reveals a folded alternate arrangement inside it | Source data → maintained alternate representation | Projections add storage inside the table lifecycle |
-| Optimizer choice | A rail switch compares base and projection work | Candidate paths glow → selected route opens | Queries still target the base table |
-| Write amplification | Each derived track adds resistance to the ingestion flywheel | More derived data → larger effort dial | Faster reads cost write work and storage |
-
-The materialized-view and projection animations must never look interchangeable: one writes a target track; the other reveals a maintained alternate representation.
-
-### 5. Architecture chamber — the cluster switchboard
-
-| Mechanism | Visualization | Visible transition | Lesson |
-| --- | --- | --- | --- |
-| Sharding | A routing prism divides rows across compute modules | Shard key → route → destination | Sharding divides data and work |
-| Distributed query | A pulse fans out and partial results gather | Coordinator → shards → combined result | Scale-out reads add network and coordination work |
-| Replication | Each shard has a mirror; parts cross a replication bridge | New part → queue → replica caught up | Replication duplicates data for resilience |
-| Keeper | A separate three-node quorum ring exchanges small violet pulses | Proposal → majority → coordinated state | Keeper coordinates metadata; data does not flow through it |
-| Failure | One mirror goes dark while reads reroute and lag appears | Failure → traffic moves → reduced redundancy | Replicas improve availability but add operations |
-| Recovery | A returning replica compares its queue and fetches parts | Restart → catch-up → healthy pair | Recovery costs bandwidth and time |
-| Multi-region | Region frames make long links visibly slower without false timing | Local path versus cross-region path | Geography adds latency and consistency tradeoffs |
-
-Users may trigger one bounded failure scenario. Keeper remains physically separate from data routes to prevent a common misconception.
-
-### 6. Retention chamber — the time and rewrite vault
-
-| Mechanism | Visualization | Visible transition | Lesson |
-| --- | --- | --- | --- |
-| TTL delete | Parts age along a rail and fall through a guarded disposal gate | Threshold → eligible → background removal | TTL cleanup is asynchronous |
-| TTL move | An elevator transfers parts from hot to cold storage | Hot → policy threshold → cold | Retention can change storage class |
-| TTL recompress | A press reduces cassette thickness while resource meters rise | Old codec → rewrite → denser part | Storage savings spend background resources |
-| TTL aggregation | Detailed bars collapse into coarse time buckets | Detail → rollup states → historical part | Long retention can exchange detail for cost |
-| Heavy mutation | An orange gantry reads and rewrites an affected cassette | Queue → rewrite → replacement | Traditional mutations rewrite parts |
-| Backup | A gantry captures immutable objects and seals a manifest | Snapshot → object capture → manifest | Backups are not replicas |
-| Restore | A ghost target fills and validates before activation | Empty → restore → integrity check → active | Restore verification makes backups useful |
-
-Pressure mode shows TTL, merges, and mutations competing for one background-resource meter.
-
-## Two cinematics
-
-### One block becomes one answer
-
-Rows arrive, the async buffer forms a batch, the foundry creates and opens a part, background work merges it, a query uses sparse marks to skip ranges, only requested columns and granules enter parallel lanes, a justified precomputation returns an answer, and the part eventually enters a TTL route.
-
-### An architecture survives failure
-
-The advisor's chosen path illuminates; shard routing divides data; replicas receive parts while Keeper coordinates metadata separately; one replica fails; reads continue through its partner; the replica returns, fetches missing parts, and converges; the story ends on storage, network, and operational tradeoffs.
-
-The camera never teleports during a story. A continuous yellow data ribbon pulls it through the system.
-
-## Interaction model
-
-- Click a chamber to focus it; click a labeled component to enter X-ray view.
-- Pause, step one semantic event, scrub, or run at 0.25×–4×.
-- Toggle **Healthy / Pressure** to reveal bounded failure modes.
-- Toggle **Show saved work** to reveal bytes, granules, or routes ClickHouse avoided.
-- Compare two mechanisms with aligned event timelines.
-- Escape moves up one zoom level; keyboard and camera focus stay synchronized.
-- Mobile uses a two-snap bottom sheet and never hides the active mechanism behind it.
-
-## Visual direction
-
-The world is a museum-grade industrial cutaway: technical ceramic floors, smoked-polycarbonate housings, anodized black mechanisms, brushed metal tracks, and illuminated yellow data. Transparent surfaces exist only to reveal internals.
-
-| Token | Value | Purpose |
+| Token | Value | Meaning |
 | --- | --- | --- |
-| Mineral | `#D8D8D0` | atmosphere |
-| Ceramic | `#F3F2EC` | stage and readable surfaces |
-| Instrument black | `#15171A` | housings and primary structure |
-| Click yellow | `#FFCC01` | rows and active routes |
-| Query cyan | `#78D7D2` | read-path work only |
-| Pressure vermilion | `#D64C3F` | overload, failure, destructive work |
+| White | `#FFFFFF` | page atmosphere and negative space |
+| Ceramic | `#F3F2EC` | machine stages and readable surfaces |
+| Instrument black | `#15171A` | workers, frames, and primary structure |
+| Click yellow | `#FFCC01` | active data, Part B, commits, and selected routes |
+| Query cyan | `#78D7D2` | Part A and read-path work |
+| Pressure vermilion | `#D64C3F` | overload, failure, and expensive rewrites |
 
-Strawn remains restricted to “What can I Click.” System sans-serif carries UI text and `ui-monospace` carries part names, counters, and evidence labels.
+Strawn is used only for the product title. The interface uses system sans-serif and monospace labels. Manual text must stay readable in the ChatGPT in-app browser: primary body copy is at least 15–16 px, scenario titles at least 20 px, and important controls at least 44 px tall.
 
-```text
-┌──────────────────────────────────────────────────────────────────────────┐
-│ What can I Click        Search mechanisms                     Evidence  │
-├─────────────┬───────────────────────────────────┬────────────────────────┤
-│ Story path  │                                   │ Inspector              │
-│ 01 Arrive   │     TRANSPARENT DATA MACHINE      │ mechanism / why        │
-│ 02 Parts    │       continuous yellow route     │ states / tradeoffs     │
-│ 03 Read     │                                   │ evidence               │
-│ ...         │                                   │                        │
-├─────────────┴───────────────────────────────────┴────────────────────────┤
-│ Pause  Step  0.25× 1× 2× 4×   Healthy / Pressure   timeline             │
-└──────────────────────────────────────────────────────────────────────────┘
-```
+## Interaction contract
 
-## Technical architecture
+- Drag to orbit; Shift-drag to pan on desktop; scroll to zoom.
+- Pause/play and reset are the only persistent simulation controls.
+- The scenario picker is the primary manual control.
+- Selecting a pressure scenario focuses its responsible mechanism and opens the recommendation inspector.
+- Escape moves back one interface level.
+- Mobile hides the telemetry strip and keeps the scenario control reachable below the scene.
+- Reduced motion preserves every state and explanation with discrete changes.
+- Agent-only workload journeys appear only after a WebMCP recommendation.
 
-Replace one `KnowledgeNode` per district with a registry addressable at mechanism level:
+## WebMCP boundary
 
-```ts
-type MechanismSpec = {
-  id: MechanismId;
-  districtId: DistrictId;
-  title: string;
-  tempo: Tempo;
-  cameraPose: CameraPose;
-  states: SimulationState[];
-  transitions: SemanticTransition[];
-  healthyScenarioId: string;
-  pressureScenarioId?: string;
-  claimIds: string[];
-  tradeoffs: Tradeoff[];
-  reducedMotionSummary: string;
-};
-```
+The public tool names remain:
 
-The registry drives rendering, search, inspector content, WebMCP focus, accessible narration, story paths, and tests. No feature may exist only as an unaddressable mesh.
+- `describe_clickhouse_world`
+- `recommend_clickhouse_architecture`
+- `play_architecture_story`
+- `inspect_clickhouse_mechanism`
+- `compare_clickhouse_methods`
+- `search_clickhouse_evidence`
+- `reset_clickhouse_world`
 
-The simulation uses semantic events rather than free-running animation phases:
+Inputs are strictly validated. Tools accept reviewed mechanism IDs and bounded workload fields; they never accept SQL execution, credentials, private cluster data, shader source, executable content, asset URLs, or arbitrary geometry.
 
-```ts
-type SimulationEvent = {
-  at: number;
-  type: "arrive" | "buffer" | "flush" | "merge" | "scan" | "replicate" | "expire";
-  subjectId: string;
-  fromState: string;
-  toState: string;
-  narration: string;
-};
-```
+Recommendations return an ordered path, rationale, alternatives, tradeoffs, validation steps, confidence, and citations. The site's deterministic rules own the recommendation; the visitor's agent translates natural language into the bounded schema.
 
-React Three Fiber interpolates between events but never owns the truth. Scrubbing, reduced motion, browser tests, and WebMCP playback share the event log.
+## Architecture
+
+The renderer never owns simulation truth. A shared clock and scalar frame functions produce semantic stages; React Three Fiber interpolates the geometry.
 
 ```text
-src/visualization/
-  registry/        mechanisms, layouts, healthy and pressure scenarios
-  engine/          deterministic clock, reducer, selectors
-  scene/
-    DataMachine.tsx
-    DataRibbon.tsx
-    chambers/      six mechanism-specific chambers
-    xray/          part, granule, projection, and replica cutaways
-    materials/
-    effects/
-  ui/              story rail, inspector, timeline, pressure toggle, text world
+Workload profile
+      │ strict Zod schema
+      ▼
+Deterministic advisor ─── evidence registry
+      │ mechanism IDs + tradeoffs
+      ▼
+Zustand state ─── WebMCP tools
+      │
+      ├── scenario card / agent journey / inspector
+      └── shared semantic clock ─── React Three Fiber foundry
 ```
 
-The advisor and evidence modules stay outside this directory. `BonsaiMechanism.tsx`, botanical islands, spores, root connections, and nature-specific motion types are removed after replacement parity.
+The mechanism registry drives WebMCP focus, the inspector, accessible narration, evidence, and the scene. No recommendation may point to a mechanism without a title, explanation, tradeoff, provenance, and accessible text equivalent.
 
-## WebMCP changes
+## Quality gate
 
-Keep the seven public tool names, but return and accept mechanism IDs rather than only district IDs. Recommendations drive camera poses, semantic events, pressure states, and the exact inspector. Tool calls never create geometry, provide shaders, fetch assets, or supply executable animation instructions.
+- No browser, React, WebGL, CSP, or accessibility errors.
+- No horizontal overflow at 390×844, 1022×720, 1280×720, or 1440×900.
+- The MergeTree card and scenario control never overlap.
+- The rear retirement bin never hides the merge worker.
+- Parts keep a stable scale through crane pickup and merge handoff.
+- Parts A and B visibly retire only after Part C commits.
+- Keeper remains outside the user-data path.
+- Materialized views and projections remain semantically distinct in the reviewed mechanism corpus.
+- System view remains at or below 220 draw calls.
+- The app recovers from a WebGL context-loss signal.
+- Reduced motion preserves the same meaning.
+- Type checks, unit tests, dependency audit, production build, and current Playwright suite pass.
 
-## Accessibility and reduced motion
+## Explicit boundaries
 
-- Every semantic event has a synchronized text description.
-- The world in words exposes the same chamber, mechanism, state, tradeoff, and evidence hierarchy.
-- Keyboard users can traverse, enter X-ray view, step the timeline, and return.
-- Reduced motion uses discrete before/after states and short crossfades without losing information.
-- Color is reinforced by shape, fill pattern, label, and direction.
-- DOM text meets WCAG 2.2 AA; active 3D components retain 3:1 local separation.
-
-## Performance budget
-
-- Target 50 FPS at 1440×900 on the demo laptop; minimum 30 FPS during the heaviest story.
-- At most 220 visible draw calls in system view and 300 in an X-ray close-up.
-- Instance rows, granules, marks, cassettes, route pulses, and cluster modules.
-- At most 180 live moving instances; off-screen chambers update at 2–5 Hz or freeze.
-- Cap DPR at 1.25 with adaptive reduction after sustained slow frames.
-- Use one shadow-casting key light and baked contact decals for small repeated objects.
-- Load no third-party runtime models, textures, shaders, or fonts.
-
-## Build sequence
-
-1. **Foundation and proof, days 1–2:** mechanism registry, event engine, data ribbon, camera, materials, then one complete async-buffer → part-X-ray slice.
-2. **Hero chambers, days 3–4:** MergeTree foundry and query scanner; ship the block-to-answer cinematic first.
-3. **Full coverage, days 5–7:** ingestion, precomputation, architecture failure/recovery, TTL, mutation, backup, and restore.
-4. **Advisor choreography, day 8:** migrate recommendations and WebMCP from district paths to mechanism paths.
-5. **Quality gate, days 9–10:** every mechanism, both stories, mobile, keyboard, reduced motion, evidence, draw calls, and FPS on the actual demo laptop.
-
-## Acceptance rubric
-
-| Dimension | 0 | 1 | 2 |
-| --- | --- | --- | --- |
-| Causal clarity | Decorative or misleading | State change visible | Cause, transition, and consequence visible |
-| Visual identity | Placeholder/shared silhouette | Some unique geometry | Recognizable mechanism-specific machine |
-| Inspector depth | Label only | Explanation or tradeoff | State, tradeoff, misconception, and evidence |
-| Interaction | Passive loop | Focus or replay | Focus, scrub, compare, and pressure state |
-| Accessibility | 3D-only information | Partial text equivalent | Complete keyboard and reduced-motion equivalent |
-
-No mechanism may ship with a zero. MergeTree and Read require 10/10; all other chambers require at least 9/10.
-
-## Explicit cuts
-
-- No bonsai, trees, pots, islands, roots, spores, or nature dressing.
-- No exhaustive catalog of every engine, setting, index, or SQL feature.
-- No arbitrary code, SQL execution, credentials, private cluster data, or external assets.
-- No exact performance timing without pinned evidence and conditions.
-- No crawler or unreviewed evidence ingestion.
-
-The result should be memorable because a visitor watches ClickHouse avoid, move, and trade work—not because the scene contains more decoration.
+- The manual v1 experience focuses on MergeTree and its highest-value gotchas.
+- Other families and system mechanisms remain addressable by reviewed WebMCP journeys; they are not presented as a permanent manual grid.
+- No exhaustive settings catalog, built-in chat, cluster connection, SQL runner, crawler, accounts, or backend.
+- No external 3D models, runtime shaders, or unreviewed user assets.
+- The tree is an original supporting landmark, not an ICQR copy and not the data model itself.

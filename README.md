@@ -2,9 +2,11 @@
 
 An open-source, WebMCP-enabled visual guide to ClickHouse architecture.
 
-What can I Click turns a bounded workload profile into a deterministic, evidence-backed architecture recommendation, then explains that recommendation through an inspectable 3D simulation. The site does not call an LLM or require a backend: a visitor's WebMCP-capable agent interprets natural language, while the browser owns the rules, evidence, visualization state, and safety boundaries.
+What can I Click makes ClickHouse gotchas visible. Its interactive 3D foundry shows how tiny inserts, excessive parts, poor ordering keys, expensive reads, competing background work, mutations, and replication failures change the system.
 
-> **Project status:** Hackathon prototype. The current six-district world is being rebuilt as a mechanism-specific ClickHouse cutaway. See the [visualization redesign plan](docs/visualization-redesign-plan.md).
+WebMCP makes those lessons specific to a visitor's workload. A WebMCP-capable agent can select the relevant reviewed mechanisms, recommend safer patterns, explain tradeoffs, and return validation steps without executing SQL or reading a private cluster.
+
+> **Project status:** Hackathon prototype under active visual review. The current manual experience deliberately focuses on one polished MergeTree foundry and eight operating scenarios. The broader mechanism and evidence registries remain available to WebMCP recommendations.
 
 ## Why this exists
 
@@ -12,6 +14,8 @@ ClickHouse advice is easy to memorize and hard to reason about. This project mak
 
 - how small inserts become part pressure;
 - how immutable parts merge in the background;
+- when to choose MergeTree, ReplacingMergeTree, CoalescingMergeTree, SummingMergeTree, AggregatingMergeTree, CollapsingMergeTree, or VersionedCollapsingMergeTree;
+- how `argMax` and `SELECT FINAL` trade explicit aggregation against query-time engine reconciliation;
 - how ordering, sparse indexes, granules, and column pruning reduce reads;
 - how materialized views and projections move or duplicate work;
 - how shards, replicas, and Keeper solve different distributed-system problems; and
@@ -19,17 +23,33 @@ ClickHouse advice is easy to memorize and hard to reason about. This project mak
 
 Every recommendation includes rationale, alternatives, tradeoffs, validation steps, confidence, and linked evidence. Timing labels are qualitative unless a source provides a defensible measurement.
 
+The manual shell stays on the core MergeTree foundry. An explicit WebMCP family request temporarily replaces that card with the selected engine's fit, gotcha, and read contract; it never reintroduces the old family grid. ReplacingMergeTree's background, `argMax`, and `FINAL` views use separate deterministic 3D lifecycles so the selected advice and the visible machine cannot silently disagree.
+
+When an agent requests `argmax-vs-final`, one shared candidate rack feeds two synchronized 3D lanes. The comparison makes the decision boundary explicit: `argMax` needs one deliberate total order; `FINAL` asks the engine to reconcile matching candidates during the query. Comparison mode disappears as soon as a single method or another part of the world is selected.
+
+CoalescingMergeTree similarly distinguishes eventual storage convergence from a bounded `SELECT FINAL` read. The background mosaic kiln assembles sparse fields during later merges; the query-time light table assembles them now and makes the extra read work and NULL semantics explicit.
+
+SummingMergeTree uses one causal two-track machine instead of a magic counter animation. Parts A (`+5`) and B (`+7`) become a stored partial (`12`) during one background merge while a newer equal-key part (`+4`) remains separate. The exact read then aggregates both visible rows into `16`, matching the documented requirement to use the appropriate `SUM` and `GROUP BY` because summation across resulting parts may be incomplete.
+
+AggregatingMergeTree makes the `-State` / `-Merge` boundary physical. Two `avgState` capsules retain `(sum, count)` as `(20, 2)` and `(90, 3)`; the background refinery combines them into `(110, 5)`, and only the read-side `avgMerge` gate emits the scalar `22`. This prevents the visualization from implying that merges average already-finalized averages.
+
+CollapsingMergeTree now shows one valid producer history rather than two anonymous signs. The old `(5 views, 146s, +1)` state meets its exact `(5, 146, -1)` cancel copy at the background-collapse gate, while the `(6, 185, +1)` replacement survives. The read lane demonstrates why metrics remain sign-aware before that merge has happened and calls out bounded `FINAL` as a different row-extraction choice.
+
+VersionedCollapsingMergeTree turns version matching into a routing system. A v2 state arrives first, followed by a v1 cancel and then the v1 state; the router still pairs only the same-key v1 rows with opposite signs. The v1 pair collapses and v2 survives, making the engine’s order-independent write advantage and exact-version producer obligation visible.
+
+The primary experience uses a consistent physical vocabulary: immutable white cassettes, visible column files, a working crane, a black merge worker, a newly written Part C, and a rear retirement bin for Parts A and B. An original low-poly tree behind the foundry makes the MergeTree name memorable without replacing the storage mechanics. A compact agent trace walks a workload through the reviewed mechanisms and tradeoffs chosen for that use case.
+
 ## WebMCP tools
 
 The app registers seven bounded tools when `document.modelContext` is available:
 
 | Tool | Purpose | Changes scene state |
 | --- | --- | --- |
-| `describe_clickhouse_world` | Describe available mechanisms and evidence | No |
-| `recommend_clickhouse_architecture` | Build a deterministic recommendation from an enumerated workload | Yes |
+| `describe_clickhouse_world` | Describe reviewed MergeTree behavior, mechanisms, and evidence | No |
+| `recommend_clickhouse_architecture` | Build a deterministic recommendation and stage its relevant mechanism path | Yes |
 | `play_architecture_story` | Animate a recommendation path | Yes |
-| `inspect_clickhouse_mechanism` | Focus one mechanism and open its explanation | Yes |
-| `compare_clickhouse_methods` | Compare two supported mechanisms | No |
+| `inspect_clickhouse_mechanism` | Focus a reviewed mechanism; optionally select a bounded family/read behavior | Yes |
+| `compare_clickhouse_methods` | Align two mechanisms, compare `argMax` with `FINAL`, or open two reviewed production accounts side by side | Yes |
 | `search_clickhouse_evidence` | Search the bounded public evidence corpus | No |
 | `reset_clickhouse_world` | Restore the initial simulation state | Yes |
 
@@ -43,7 +63,7 @@ Claims are labeled as:
 - **Derived** — a deterministic conclusion assembled from cited official claims.
 - **Field** — a manually reviewed public engineering or customer story.
 
-The bundled corpus contains ten representative public stories. Versions are recorded only when the source explicitly discloses them; otherwise the UI says “Not disclosed.” The source registry is in [`src/data/evidence.ts`](src/data/evidence.ts).
+The bundled corpus retains the original ten representative public stories and currently includes 40 reviewed production implementation accounts for aligned side-by-side comparison. Runtime and WebMCP summaries still derive the count from the registry. A family shows at most three company chips, and only when the reviewed source explicitly names that engine; an evidence gap is labeled rather than filled by inference. Versions are recorded only when a source explicitly discloses them; otherwise the UI says “Not disclosed.” The registries are in [`src/data/evidence.ts`](src/data/evidence.ts) and [`src/data/companyImplementations.ts`](src/data/companyImplementations.ts).
 
 ## Architecture
 
@@ -56,11 +76,11 @@ Deterministic advisor ─── evidence registry
       ▼
 Zustand application state ─── WebMCP tools
       │
-      ├── React inspector and accessible text atlas
-      └── renderer-independent simulation clock ─── React Three Fiber scene
+      ├── React scenario card, agent journey, and mechanism inspector
+      └── renderer-independent simulation clock ─── 3D foundry + pressure visualizations
 ```
 
-The layout registry is the shared source of truth for search, WebMCP focus, inspector content, accessible text, and 3D placement. Simulation time is independent of React Three Fiber so tests can validate stories without WebGL.
+The mechanism registry is the shared source of truth for WebMCP focus, inspector content, accessible narration, and 3D placement. Simulation truth stays outside React Three Fiber; the renderer interpolates reviewed semantic states.
 
 ## Local development
 

@@ -3,8 +3,14 @@ dist/
 coverage/
 test-results/
 playwright-report/
+artifacts/
 .wrangler/
 .dev.vars
 .env*
 !.env.example
 
+# Superseded local brand explorations. The approved v4 source and 256px
+# production mark remain versioned under public/brand/.
+public/brand/what-should-i-click-mark.png
+public/brand/what-should-i-click-mark-v2.png
+public/brand/what-should-i-click-mark-v3.png

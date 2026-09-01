@@ -1,23 +1,44 @@
-import { ChevronRight, Play, Route } from "lucide-react";
-import { knowledgeById } from "../../data/knowledge";
+import { ChevronRight, Route, Sparkles } from "lucide-react";
+import { LIFECYCLE_PATH, mechanismById } from "../../data/mechanisms";
 import { useAtlasStore } from "../../store/useAtlasStore";
 
 export function RecommendationRail() {
   const recommendation = useAtlasStore((state) => state.recommendation);
-  const playStory = useAtlasStore((state) => state.playStory);
-  const selectNode = useAtlasStore((state) => state.selectNode);
-  if (!recommendation) return null;
+  const storyMode = useAtlasStore((state) => state.storyMode);
+  const storyEvents = useAtlasStore((state) => state.storyEvents);
+  const storyIndex = useAtlasStore((state) => state.storyIndex);
+  const selected = useAtlasStore((state) => state.selectedMechanismId);
+  const path = storyEvents.length ? storyEvents.map((event) => event.subjectId) : recommendation?.path ?? LIFECYCLE_PATH;
   return (
-    <section className="recommendation-rail" aria-label="Agent architecture recommendation">
-      <div className="recommendation-title"><Route size={15} /><span><small>Agent architecture</small><strong>{recommendation.summary}</strong></span></div>
-      <div className="recommendation-path">
-        {recommendation.path.map((id, index) => {
-          const node = knowledgeById(id);
-          return node ? <div key={id}><button type="button" onClick={() => selectNode(id)}>{node.shortTitle}</button>{index < recommendation.path.length - 1 ? <ChevronRight size={12} /> : null}</div> : null;
-        })}
+    <aside className="story-rail" aria-label="Architecture story path">
+      <div className="story-rail-head">
+        {recommendation ? <Sparkles size={14} /> : <Route size={14} />}
+        <span><small>{recommendation ? "Agent architecture" : "Data lifecycle"}</small><strong>{recommendation?.summary ?? "One block becomes one answer"}</strong></span>
       </div>
-      <button type="button" className="play-recommendation" onClick={() => playStory("architecture", recommendation.path)}><Play size={14} />Play path</button>
-    </section>
+      <ol>
+        {path.map((id, index) => {
+          const spec = mechanismById(id);
+          if (!spec) return null;
+          const active = storyEvents.length ? index === storyIndex : selected === id;
+          return (
+            <li key={`${id}-${index}`}>
+              <button
+                type="button"
+                data-active={active}
+                onClick={() => {
+                  if (storyEvents[index]) useAtlasStore.getState().seek(storyEvents[index].at);
+                  else useAtlasStore.getState().selectMechanism(id);
+                }}
+              >
+                <i>{String(index + 1).padStart(2, "0")}</i>
+                <span><strong>{spec.shortTitle}</strong><small>{spec.tempo}</small></span>
+                <ChevronRight size={13} />
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+      {storyMode && storyEvents[storyIndex] && <p className="story-narration" aria-live="polite">{storyEvents[storyIndex].narration}</p>}
+    </aside>
   );
 }
-

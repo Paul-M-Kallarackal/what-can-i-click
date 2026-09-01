@@ -1,14 +1,29 @@
 import { create } from "zustand";
-import { LIFECYCLE_PATH } from "../data/knowledge";
-import type { ArchitectureRecommendation, DistrictId, StoryMode } from "../types";
+import { LIFECYCLE_PATH, mechanismById } from "../data/mechanisms";
+import { operationalScenarioById } from "../data/operationalScenarios";
+import { resolveJourneyGuideStep, useCaseJourneyById } from "../data/useCaseJourneys";
+import { eventsForStory, nextEventTime } from "../lib/simulation";
+import type { ArchitectureRecommendation, LatestReadStrategy, MechanismId, MergeFamilyId, ScenarioMode, SimulationEvent, StoryMode, ViewLevel } from "../types";
+
+type InspectorSnap = "peek" | "full";
 
 type AtlasState = {
-  selectedNodeId: DistrictId | null;
+  selectedMechanismId: MechanismId | null;
   selectedEvidenceId: string | null;
-  hoveredNodeId: DistrictId | null;
+  evidenceComparisonId: string | null;
+  hoveredMechanismId: MechanismId | null;
+  viewLevel: ViewLevel;
+  scenario: ScenarioMode;
+  mergeFamilyId: MergeFamilyId;
+  latestReadStrategy: LatestReadStrategy;
+  latestReadComparison: "argmax-vs-final" | null;
+  selectedTidbitId: string | null;
+  showSavedWork: boolean;
+  comparisonIds: [MechanismId, MechanismId] | null;
   recommendation: ArchitectureRecommendation | null;
   storyMode: StoryMode;
-  storyPath: DistrictId[];
+  storyPath: MechanismId[];
+  storyEvents: SimulationEvent[];
   storyIndex: number;
   storyRevision: number;
   playing: boolean;
@@ -18,30 +33,64 @@ type AtlasState = {
   searchOpen: boolean;
   worldInWordsOpen: boolean;
   aboutOpen: boolean;
-  selectNode: (id: DistrictId | null) => void;
+  journeyPanelOpen: boolean;
+  activeJourneyId: string | null;
+  journeyStepIndex: number;
+  inspectorSnap: InspectorSnap;
+  selectMechanism: (id: MechanismId | null, level?: ViewLevel) => void;
   selectEvidence: (id: string | null) => void;
-  hoverNode: (id: DistrictId | null) => void;
+  setEvidenceComparison: (id: string | null) => void;
+  hoverMechanism: (id: MechanismId | null) => void;
+  setViewLevel: (level: ViewLevel) => void;
+  openXray: () => void;
+  showSystem: () => void;
+  setScenario: (scenario: ScenarioMode) => void;
+  setMergeFamily: (familyId: MergeFamilyId) => void;
+  setLatestReadStrategy: (strategy: LatestReadStrategy) => void;
+  setLatestReadComparison: (comparison: "argmax-vs-final" | null) => void;
+  selectTidbit: (id: string | null) => void;
+  toggleSavedWork: () => void;
+  setComparison: (first: MechanismId, second: MechanismId) => void;
+  clearComparison: () => void;
   setRecommendation: (recommendation: ArchitectureRecommendation) => void;
-  playStory: (mode: Exclude<StoryMode, null>, path?: DistrictId[]) => void;
+  playStory: (mode: Exclude<StoryMode, null>, path?: MechanismId[]) => void;
   stopStory: () => void;
   togglePlaying: () => void;
+  setPlaying: (playing: boolean) => void;
   setSpeed: (speed: number) => void;
+  seek: (time: number) => void;
+  step: (direction: 1 | -1) => void;
   setSimulationTime: (time: number) => void;
   setStoryIndex: (index: number) => void;
   setReducedMotion: (reduced: boolean) => void;
   setSearchOpen: (open: boolean) => void;
   setWorldInWordsOpen: (open: boolean) => void;
   setAboutOpen: (open: boolean) => void;
+  setJourneyPanelOpen: (open: boolean) => void;
+  startJourney: (id: string) => void;
+  stopJourney: () => void;
+  setJourneyStep: (index: number) => void;
+  setInspectorSnap: (snap: InspectorSnap) => void;
   reset: () => void;
 };
 
 const initial = {
-  selectedNodeId: null,
+  selectedMechanismId: null,
   selectedEvidenceId: null,
-  hoveredNodeId: null,
+  evidenceComparisonId: null,
+  hoveredMechanismId: null,
+  viewLevel: "system" as ViewLevel,
+  scenario: "healthy" as ScenarioMode,
+  mergeFamilyId: "merge" as MergeFamilyId,
+  latestReadStrategy: "background" as LatestReadStrategy,
+  latestReadComparison: null as "argmax-vs-final" | null,
+  selectedTidbitId: null as string | null,
+  showSavedWork: false,
+  comparisonIds: null as [MechanismId, MechanismId] | null,
   recommendation: null,
   storyMode: null as StoryMode,
-  storyPath: [] as DistrictId[],
+  storyPath: [] as MechanismId[],
+  storyEvents: [] as SimulationEvent[],
   storyIndex: 0,
   storyRevision: 0,
   playing: true,
@@ -51,40 +100,182 @@ const initial = {
   searchOpen: false,
   worldInWordsOpen: false,
   aboutOpen: false,
+  journeyPanelOpen: false,
+  activeJourneyId: null as string | null,
+  journeyStepIndex: 0,
+  inspectorSnap: "peek" as InspectorSnap,
 };
 
 export const useAtlasStore = create<AtlasState>((set, get) => ({
   ...initial,
-  selectNode: (selectedNodeId) => set({ selectedNodeId, selectedEvidenceId: null, searchOpen: false }),
-  selectEvidence: (selectedEvidenceId) => set({ selectedEvidenceId, selectedNodeId: null, searchOpen: false }),
-  hoverNode: (hoveredNodeId) => set({ hoveredNodeId }),
-  setRecommendation: (recommendation) => set({
-    recommendation,
-    storyPath: recommendation.path,
-    storyMode: "architecture",
-    storyIndex: 0,
-    storyRevision: get().storyRevision + 1,
-    simulationTime: 0,
-    playing: true,
-    selectedNodeId: recommendation.path[0] ?? null,
+  selectMechanism: (selectedMechanismId, level = "mechanism") => set({
+    selectedMechanismId,
     selectedEvidenceId: null,
+    evidenceComparisonId: null,
+    searchOpen: false,
+    viewLevel: selectedMechanismId ? level : "system",
+    inspectorSnap: selectedMechanismId ? "peek" : "full",
+    latestReadComparison: null,
   }),
+  selectEvidence: (selectedEvidenceId) => set({ selectedEvidenceId, evidenceComparisonId: null, selectedMechanismId: null, selectedTidbitId: null, searchOpen: false, viewLevel: "system", inspectorSnap: "full", latestReadComparison: null }),
+  setEvidenceComparison: (evidenceComparisonId) => set({ evidenceComparisonId }),
+  hoverMechanism: (hoveredMechanismId) => set({ hoveredMechanismId }),
+  setViewLevel: (viewLevel) => set({ viewLevel }),
+  openXray: () => set((state) => ({ viewLevel: state.selectedMechanismId ? "xray" : "system", inspectorSnap: "peek" })),
+  showSystem: () => set({ selectedMechanismId: null, selectedEvidenceId: null, evidenceComparisonId: null, viewLevel: "system", comparisonIds: null, latestReadComparison: null }),
+  setScenario: (scenario) => {
+    const operational = operationalScenarioById(scenario);
+    const selectedMechanismId = operational.primaryMechanismId ?? get().selectedMechanismId;
+    set({
+      scenario,
+      simulationTime: 0,
+      playing: true,
+      selectedMechanismId,
+      selectedEvidenceId: null,
+      evidenceComparisonId: null,
+      selectedTidbitId: null,
+      viewLevel: selectedMechanismId ? "mechanism" : get().viewLevel,
+      inspectorSnap: selectedMechanismId ? "peek" : get().inspectorSnap,
+      latestReadComparison: null,
+    });
+  },
+  setMergeFamily: (mergeFamilyId) => set({ mergeFamilyId, selectedTidbitId: null, selectedMechanismId: null, selectedEvidenceId: null, evidenceComparisonId: null, viewLevel: "system", comparisonIds: null, latestReadComparison: null }),
+  setLatestReadStrategy: (latestReadStrategy) => set({ latestReadStrategy, selectedTidbitId: null, latestReadComparison: null }),
+  setLatestReadComparison: (latestReadComparison) => set({ latestReadComparison, selectedTidbitId: null }),
+  selectTidbit: (selectedTidbitId) => set(selectedTidbitId ? {
+    selectedTidbitId,
+    selectedEvidenceId: null,
+    evidenceComparisonId: null,
+    selectedMechanismId: null,
+    viewLevel: "system",
+    inspectorSnap: "peek",
+    latestReadComparison: null,
+  } : { selectedTidbitId: null }),
+  toggleSavedWork: () => set((state) => ({ showSavedWork: !state.showSavedWork })),
+  setComparison: (first, second) => set({ comparisonIds: first === second ? null : [first, second], viewLevel: "mechanism" }),
+  clearComparison: () => set({ comparisonIds: null }),
+  setRecommendation: (recommendation) => {
+    const storyEvents = eventsForStory("architecture", recommendation.path);
+    set({
+      recommendation,
+      storyPath: recommendation.path,
+      storyEvents,
+      storyMode: "architecture",
+      storyIndex: 0,
+      storyRevision: get().storyRevision + 1,
+      simulationTime: 0,
+      playing: true,
+      selectedMechanismId: recommendation.path[0] ?? null,
+      selectedEvidenceId: null,
+      evidenceComparisonId: null,
+      viewLevel: recommendation.path.length ? "mechanism" : "system",
+      scenario: "healthy",
+      latestReadComparison: null,
+    });
+  },
   playStory: (storyMode, path) => {
     const storyPath = path ?? (storyMode === "lifecycle" ? LIFECYCLE_PATH : get().recommendation?.path ?? []);
-    set({ storyMode, storyPath, storyIndex: 0, storyRevision: get().storyRevision + 1, simulationTime: 0, playing: true, selectedNodeId: storyPath[0] ?? null, selectedEvidenceId: null });
+    const storyEvents = eventsForStory(storyMode, storyPath);
+    set({
+      storyMode,
+      storyPath,
+      storyEvents,
+      storyIndex: 0,
+      storyRevision: get().storyRevision + 1,
+      simulationTime: 0,
+      playing: true,
+      selectedMechanismId: storyPath[0] ?? null,
+      selectedEvidenceId: null,
+      evidenceComparisonId: null,
+      viewLevel: storyPath.length ? "mechanism" : "system",
+      inspectorSnap: "peek",
+      latestReadComparison: null,
+    });
   },
-  stopStory: () => set({ storyMode: null, storyPath: [], storyIndex: 0 }),
+  stopStory: () => set({ storyMode: null, storyPath: [], storyEvents: [], storyIndex: 0, playing: false }),
   togglePlaying: () => set((state) => ({ playing: !state.playing })),
+  setPlaying: (playing) => set({ playing }),
   setSpeed: (speed) => set({ speed: Math.min(4, Math.max(0.25, speed)) }),
+  seek: (simulationTime) => set((state) => {
+    const index = Math.max(0, lastEventIndexAtOrBefore(state.storyEvents, simulationTime));
+    const selectedMechanismId = state.storyEvents[index]?.subjectId ?? state.selectedMechanismId;
+    return { simulationTime: Math.max(0, simulationTime), storyIndex: index, selectedMechanismId, playing: false, viewLevel: selectedMechanismId ? "mechanism" : state.viewLevel };
+  }),
+  step: (direction) => {
+    const state = get();
+    const simulationTime = nextEventTime(state.storyEvents, state.simulationTime, direction);
+    const index = Math.max(0, lastEventIndexAtOrBefore(state.storyEvents, simulationTime));
+    const selectedMechanismId = state.storyEvents[index]?.subjectId ?? state.selectedMechanismId;
+    set({ simulationTime, storyIndex: index, selectedMechanismId, playing: false, viewLevel: selectedMechanismId ? "mechanism" : state.viewLevel });
+  },
   setSimulationTime: (simulationTime) => set({ simulationTime }),
-  setStoryIndex: (storyIndex) => set({ storyIndex }),
+  setStoryIndex: (storyIndex) => set((state) => ({ storyIndex, selectedMechanismId: state.storyEvents[storyIndex]?.subjectId ?? state.selectedMechanismId })),
   setReducedMotion: (reducedMotion) => set({ reducedMotion }),
   setSearchOpen: (searchOpen) => set({ searchOpen }),
   setWorldInWordsOpen: (worldInWordsOpen) => set({ worldInWordsOpen }),
   setAboutOpen: (aboutOpen) => set({ aboutOpen }),
+  setJourneyPanelOpen: (journeyPanelOpen) => set({ journeyPanelOpen }),
+  startJourney: (activeJourneyId) => {
+    const journey = useCaseJourneyById(activeJourneyId);
+    if (!journey) return;
+    const guide = resolveJourneyGuideStep(journey, 0);
+    set({
+      activeJourneyId,
+      journeyStepIndex: guide.index,
+      journeyPanelOpen: true,
+      mergeFamilyId: guide.familyId,
+      latestReadStrategy: guide.latestReadStrategy,
+      selectedTidbitId: null,
+      storyMode: null,
+      storyPath: [],
+      storyEvents: [],
+      storyIndex: 0,
+      simulationTime: 0,
+      playing: true,
+      selectedMechanismId: null,
+      selectedEvidenceId: null,
+      evidenceComparisonId: null,
+      viewLevel: "system",
+      scenario: "healthy",
+      comparisonIds: null,
+      latestReadComparison: null,
+      inspectorSnap: "peek",
+    });
+  },
+  stopJourney: () => set({ activeJourneyId: null, journeyStepIndex: 0, journeyPanelOpen: false, selectedTidbitId: null, storyMode: null, storyPath: [], storyEvents: [], storyIndex: 0, simulationTime: 0, playing: true, selectedMechanismId: null, selectedEvidenceId: null, evidenceComparisonId: null, viewLevel: "system", comparisonIds: null, latestReadComparison: null }),
+  setJourneyStep: (requestedIndex) => set((state) => {
+    const journey = state.activeJourneyId ? useCaseJourneyById(state.activeJourneyId) : undefined;
+    if (!journey) return { journeyStepIndex: 0, selectedTidbitId: null };
+    const guide = resolveJourneyGuideStep(journey, requestedIndex);
+    return {
+      journeyStepIndex: guide.index,
+      mergeFamilyId: guide.familyId,
+      latestReadStrategy: guide.latestReadStrategy,
+      selectedMechanismId: null,
+      selectedEvidenceId: null,
+      evidenceComparisonId: null,
+      selectedTidbitId: null,
+      comparisonIds: null,
+      latestReadComparison: null,
+      viewLevel: "system",
+      inspectorSnap: "peek",
+    };
+  }),
+  setInspectorSnap: (inspectorSnap) => set({ inspectorSnap }),
   reset: () => set({ ...initial, storyRevision: get().storyRevision + 1, reducedMotion: get().reducedMotion }),
 }));
 
-export function currentStoryNode(state: Pick<AtlasState, "storyPath" | "storyIndex">) {
-  return state.storyPath[state.storyIndex] ?? null;
+export function currentStoryMechanism(state: Pick<AtlasState, "storyEvents" | "storyIndex">) {
+  return state.storyEvents[state.storyIndex]?.subjectId ?? null;
+}
+
+function lastEventIndexAtOrBefore(events: SimulationEvent[], simulationTime: number) {
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    if (events[index].at <= simulationTime) return index;
+  }
+  return -1;
+}
+
+export function selectedDistrict(state: Pick<AtlasState, "selectedMechanismId">) {
+  return mechanismById(state.selectedMechanismId)?.districtId ?? null;
 }

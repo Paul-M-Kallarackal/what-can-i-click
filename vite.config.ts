@@ -5,6 +5,16 @@ export default defineConfig({
   plugins: [react()],
   server: { port: 4173 },
   preview: { port: 4173 },
-  build: { sourcemap: false },
+  build: {
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "react-vendor": ["react", "react-dom", "zustand", "zod"],
+          "three-vendor": ["three", "@react-three/fiber", "@react-three/drei"],
+        },
+      },
+    },
+  },
   test: { environment: "jsdom", globals: true, include: ["src/**/*.test.ts"] },
 });

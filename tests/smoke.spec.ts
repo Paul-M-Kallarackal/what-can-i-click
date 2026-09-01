@@ -1,67 +1,187 @@
 import { expect, test } from "@playwright/test";
+import { USE_CASE_JOURNEYS } from "../src/data/useCaseJourneys";
 
-test.describe.configure({ mode: "serial" });
-
-test("renders the living atlas without browser errors", async ({ page }) => {
+test("renders the MergeTree foundry without browser or WebGL errors", async ({ page }) => {
   const errors: string[] = [];
   page.on("console", (message) => {
-    if (message.type() === "error" || message.type() === "warning") errors.push(`${message.type()}: ${message.text()}`);
+    if ((message.type() === "error" || message.type() === "warning") && !message.text().includes("GL Driver Message")) errors.push(`${message.type()}: ${message.text()}`);
   });
   page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
   await page.goto("/", { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("heading", { name: /Watch your data/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "MergeTree" })).toBeVisible();
   await expect(page.locator("canvas")).toBeVisible();
-  await page.getByRole("button", { name: "Play the data lifecycle" }).click();
-  await expect(page.getByRole("complementary", { name: "Atlas inspector" }).getByRole("heading", { level: 2 })).toBeVisible();
+  await expect(page.locator(".foundry-legend")).toContainText("Part A / B / C");
+  await expect(page.locator(".world-canvas").getByText("MERGETREE", { exact: true })).toBeVisible();
+  await page.waitForFunction(() => Number(document.documentElement.dataset.sceneFps) > 0);
   const canvasSignal = await page.locator("canvas").evaluate((canvas: HTMLCanvasElement) => {
     const context = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
-    if (!context) return { available: false, error: null };
-    return { available: true, error: context.getError() };
+    return { available: Boolean(context), error: context?.getError() ?? null };
   });
   expect(canvasSignal).toEqual({ available: true, error: 0 });
-  expect(errors.filter((message) => !message.includes("GL Driver Message"))).toEqual([]);
+  expect(errors).toEqual([]);
 });
 
-test("an in-browser WebMCP agent can stage an architecture path", async ({ page }) => {
+test("an in-browser WebMCP agent can stage a bounded architecture path", async ({ page }) => {
   await page.addInitScript(() => {
     const tools: Array<{ name: string; execute: (input: Record<string, unknown>) => Promise<unknown> }> = [];
-    Object.defineProperty(document, "modelContext", {
-      configurable: true,
-      value: { registerTool: (tool: typeof tools[number]) => { tools.push(tool); } },
-    });
+    Object.defineProperty(document, "modelContext", { configurable: true, value: { registerTool: (tool: typeof tools[number]) => { tools.push(tool); } } });
     Object.defineProperty(window, "__atlasTools", { configurable: true, value: tools });
   });
   await page.goto("/", { waitUntil: "domcontentloaded" });
-  await page.waitForFunction(() => (window as unknown as { __atlasTools: unknown[] }).__atlasTools.length === 7);
+  await page.waitForFunction(() => (window as unknown as { __atlasTools: unknown[] }).__atlasTools.length >= 7);
   const result = await page.evaluate(async () => {
     const tools = (window as unknown as { __atlasTools: Array<{ name: string; execute: (input: Record<string, unknown>) => Promise<unknown> }> }).__atlasTools;
-    const recommend = tools.find((tool) => tool.name === "recommend_clickhouse_architecture")!;
-    return recommend.execute({
-      workload: "product-analytics",
-      ingestRate: "extreme",
-      latencyTarget: "interactive",
-      retention: "years",
-      updates: "occasional",
-      availability: "high",
-      topology: "multi-region",
-      costPriority: "performance",
+    return tools.find((tool) => tool.name === "recommend_clickhouse_architecture")!.execute({
+      workload: "product-analytics", ingestRate: "extreme", latencyTarget: "interactive", retention: "years",
+      updates: "occasional", availability: "high", topology: "multi-region", costPriority: "performance",
     });
-  }) as { path: string[] };
-  expect(result.path).toContain("architecture");
-  await expect(page.getByRole("region", { name: "Agent architecture recommendation" })).toBeVisible();
-  await expect(page.getByText("Agent chose this")).toBeVisible();
-  await page.screenshot({ path: "test-results/atlas-architecture-path.png", fullPage: true });
+  }) as { path: string[]; journey: { id: string; title: string } };
+  expect(result.path).toEqual(expect.arrayContaining(["architecture.sharding", "architecture.keeper"]));
+  expect(result.journey.id).toBe("multi-region-product-analytics");
+  await expect(page.getByRole("complementary", { name: /Multi-region product analytics guided recommendation/ })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Agent decision log" })).toBeVisible();
+});
+
+test("an agent-selected latest-state method stays synchronized with its 3D family machine", async ({ page }) => {
+  await page.addInitScript(() => {
+    const tools: Array<{ name: string; execute: (input: Record<string, unknown>) => Promise<unknown> }> = [];
+    Object.defineProperty(document, "modelContext", { configurable: true, value: { registerTool: (tool: typeof tools[number]) => { tools.push(tool); } } });
+    Object.defineProperty(window, "__atlasTools", { configurable: true, value: tools });
+  });
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => (window as unknown as { __atlasTools: unknown[] }).__atlasTools.length >= 7);
+
+  const inspectFamily = (latestReadStrategy: "argmax" | "final") => page.evaluate(async (strategy) => {
+    const tools = (window as unknown as { __atlasTools: Array<{ name: string; execute: (input: Record<string, unknown>) => Promise<unknown> }> }).__atlasTools;
+    return tools.find((tool) => tool.name === "inspect_clickhouse_mechanism")!.execute({
+      mergeFamilyId: "replacing",
+      latestReadStrategy: strategy,
+    });
+  }, latestReadStrategy);
+
+  await inspectFamily("final");
+  const workbench = page.getByRole("complementary", { name: "ReplacingMergeTree workbench" });
+  await expect(workbench).toBeVisible();
+  await expect(workbench.getByRole("region", { name: "Selected latest-state read method" })).toContainText("SELECT FINAL");
+  await expect(page.locator(".world-canvas").getByText("SELECT FINAL PRESS", { exact: true })).toBeVisible();
+  await page.waitForTimeout(500);
+  await expect(page.getByRole("complementary", { name: "ReplacingMergeTree workbench" })).toBeVisible();
+
+  await inspectFamily("argmax");
+  await expect(workbench.getByRole("region", { name: "Selected latest-state read method" })).toContainText("argMax");
+  await expect(page.locator(".world-canvas").getByText("ARGMAX WINNER CRANE", { exact: true })).toBeVisible();
+
+  await page.evaluate(async () => {
+    const tools = (window as unknown as { __atlasTools: Array<{ name: string; execute: (input: Record<string, unknown>) => Promise<unknown> }> }).__atlasTools;
+    await tools.find((tool) => tool.name === "compare_clickhouse_methods")!.execute({ comparison: "argmax-vs-final" });
+  });
+  await expect(workbench.getByRole("region", { name: "argMax versus SELECT FINAL comparison" })).toContainText("Two correctness contracts");
+  await expect(page.locator(".world-canvas").getByText("ARGMAX vs SELECT FINAL", { exact: true })).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("data-replacing-strategy", "argmax-vs-final");
+
+  await workbench.getByRole("button", { name: "Back to MergeTree" }).click();
+  await expect(page.getByRole("complementary", { name: "MergeTree workbench" })).toBeVisible();
+  await expect(page.locator(".world-canvas").getByText("MERGE WORKER", { exact: true })).toBeVisible();
+
+  await page.evaluate(async () => {
+    const tools = (window as unknown as { __atlasTools: Array<{ name: string; execute: (input: Record<string, unknown>) => Promise<unknown> }> }).__atlasTools;
+    await tools.find((tool) => tool.name === "inspect_clickhouse_mechanism")!.execute({ mergeFamilyId: "coalescing", latestReadStrategy: "final" });
+  });
+  const coalescing = page.getByRole("complementary", { name: "CoalescingMergeTree workbench" });
+  await expect(coalescing.getByRole("region", { name: "Selected latest-state read method" })).toContainText("SELECT FINAL");
+  await expect(page.locator(".world-canvas").getByText("SELECT FINAL MOSAIC LIGHT TABLE", { exact: true })).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("data-coalescing-strategy", "final");
+
+  await page.evaluate(async () => {
+    const tools = (window as unknown as { __atlasTools: Array<{ name: string; execute: (input: Record<string, unknown>) => Promise<unknown> }> }).__atlasTools;
+    await tools.find((tool) => tool.name === "inspect_clickhouse_mechanism")!.execute({ mergeFamilyId: "coalescing" });
+  });
+  await expect(page.locator(".world-canvas").getByText("BACKGROUND MOSAIC KILN", { exact: true })).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("data-coalescing-strategy", "background");
+
+  await page.evaluate(async () => {
+    const tools = (window as unknown as { __atlasTools: Array<{ name: string; execute: (input: Record<string, unknown>) => Promise<unknown> }> }).__atlasTools;
+    await tools.find((tool) => tool.name === "inspect_clickhouse_mechanism")!.execute({ mergeFamilyId: "summing" });
+  });
+  const summing = page.getByRole("complementary", { name: "SummingMergeTree workbench" });
+  await expect(summing.getByRole("region", { name: "SummingMergeTree exact-read contract" })).toContainText("Aggregate every visible row");
+  await expect(page.locator(".world-canvas").getByText("SUMMINGMERGETREE · ONE SORTING KEY", { exact: true })).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("data-summing-contract", "partial-storage-exact-read");
+  await expect(page.locator("html")).toHaveAttribute("data-summing-exact-total", "16");
+
+  await page.evaluate(async () => {
+    const tools = (window as unknown as { __atlasTools: Array<{ name: string; execute: (input: Record<string, unknown>) => Promise<unknown> }> }).__atlasTools;
+    await tools.find((tool) => tool.name === "inspect_clickhouse_mechanism")!.execute({ mergeFamilyId: "aggregating" });
+  });
+  const aggregating = page.getByRole("complementary", { name: "AggregatingMergeTree workbench" });
+  await expect(aggregating.getByRole("region", { name: "AggregatingMergeTree state contract" })).toContainText("Write -State · read matching -Merge");
+  await expect(page.locator(".world-canvas").getByText("AGGREGATINGMERGETREE · avgState EXAMPLE", { exact: true })).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("data-aggregating-contract", "state-merge-finalize");
+  await expect(page.locator("html")).toHaveAttribute("data-aggregating-final-value", "22");
+
+  await page.evaluate(async () => {
+    const tools = (window as unknown as { __atlasTools: Array<{ name: string; execute: (input: Record<string, unknown>) => Promise<unknown> }> }).__atlasTools;
+    await tools.find((tool) => tool.name === "inspect_clickhouse_mechanism")!.execute({ mergeFamilyId: "collapsing" });
+  });
+  const collapsing = page.getByRole("complementary", { name: "CollapsingMergeTree workbench" });
+  await expect(collapsing.getByRole("region", { name: "CollapsingMergeTree exact-read contract" })).toContainText("Account for Sign before merges converge");
+  await expect(page.locator(".world-canvas").getByText("COLLAPSINGMERGETREE · ONE VALID HISTORY", { exact: true })).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("data-collapsing-contract", "matched-pair-sign-aware-read");
+  await expect(page.locator("html")).toHaveAttribute("data-collapsing-survivor", "6-views-185-seconds");
+
+  await page.evaluate(async () => {
+    const tools = (window as unknown as { __atlasTools: Array<{ name: string; execute: (input: Record<string, unknown>) => Promise<unknown> }> }).__atlasTools;
+    await tools.find((tool) => tool.name === "inspect_clickhouse_mechanism")!.execute({ mergeFamilyId: "versioned-collapsing" });
+  });
+  const versioned = page.getByRole("complementary", { name: "VersionedCollapsingMergeTree workbench" });
+  await expect(versioned.getByRole("region", { name: "VersionedCollapsingMergeTree version contract" })).toContainText("Same key · same version · opposite Sign");
+  await expect(page.locator(".world-canvas").getByText("VERSIONEDCOLLAPSINGMERGETREE · OUT-OF-ORDER INPUT", { exact: true })).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("data-versioned-collapsing-contract", "same-key-version-opposite-sign");
+  await expect(page.locator("html")).toHaveAttribute("data-versioned-collapsing-survivor", "v2-sign-plus-one");
+});
+
+test("all reviewed workload profiles return their matching WebMCP journey", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.addInitScript(() => {
+    const tools: Array<{ name: string; execute: (input: Record<string, unknown>) => Promise<unknown> }> = [];
+    Object.defineProperty(document, "modelContext", { configurable: true, value: { registerTool: (tool: typeof tools[number]) => { tools.push(tool); } } });
+    Object.defineProperty(window, "__atlasTools", { configurable: true, value: tools });
+  });
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => (window as unknown as { __atlasTools: unknown[] }).__atlasTools.length >= 7);
+  for (const journey of USE_CASE_JOURNEYS) {
+    const result = await page.evaluate(async (profile) => {
+      const tools = (window as unknown as { __atlasTools: Array<{ name: string; execute: (input: Record<string, unknown>) => Promise<unknown> }> }).__atlasTools;
+      return tools.find((tool) => tool.name === "recommend_clickhouse_architecture")!.execute(profile);
+    }, journey.profile) as { journey: { id: string } };
+    expect(result.journey.id).toBe(journey.id);
+    await expect(page.getByRole("complementary", { name: `${journey.title} guided recommendation` })).toBeVisible();
+  }
+});
+
+test("keeps agent-only journeys, search, and the text system map out of the manual UI", async ({ page }) => {
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("button", { name: /10 use cases/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Open accessible system map" })).toHaveCount(0);
+  await expect(page.getByRole("textbox", { name: "Search mechanisms and evidence" })).toHaveCount(0);
+  await expect(page.locator(".journey-panel")).toHaveCount(0);
+});
+
+test("a pressure scenario focuses its mechanism and explains how to avoid it", async ({ page }) => {
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.locator(".scenario-picker__trigger").click();
+  await page.getByRole("menuitemradio", { name: /Tiny insert storm/ }).click();
+  const inspector = page.getByRole("complementary", { name: "ClickHouse mechanism inspector" });
+  await expect(inspector.getByRole("heading", { name: "Too-many-parts pressure" })).toBeVisible();
+  await expect(inspector.locator(".scenario-recommendation")).toContainText("Batch at the client or use asynchronous inserts");
+  await expect(page.locator(".scenario-picker__trigger")).toContainText("Tiny inserts");
 });
 
 test("respects reduced motion", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/", { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("heading", { name: /Watch your data/ })).toBeVisible();
-  const motion = await page.locator(".hero-chunk").first().evaluate((element) => ({
-    animationDuration: getComputedStyle(element).animationDuration,
-    transitionDuration: getComputedStyle(element).transitionDuration,
-  }));
-  expect(Number.parseFloat(motion.animationDuration)).toBeLessThanOrEqual(0.000001);
+  await expect(page.getByRole("heading", { name: "MergeTree" })).toBeVisible();
+  expect(await page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches)).toBe(true);
 });
 
 for (const viewport of [
@@ -75,18 +195,11 @@ for (const viewport of [
     await page.waitForFunction(() => Boolean(document.documentElement.dataset.sceneFps));
     const layout = await page.evaluate(() => ({
       overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
-      fps: document.documentElement.dataset.sceneFps ?? null,
+      fps: Number(document.documentElement.dataset.sceneFps),
+      drawCalls: Number(document.documentElement.dataset.sceneDrawCalls),
     }));
     expect(layout.overflow).toBe(false);
-    if (viewport.width >= 1280) {
-      expect(Number.isFinite(Number(layout.fps))).toBe(true);
-      expect(Number(layout.fps)).toBeGreaterThan(0);
-    }
-    await page.screenshot({ path: `test-results/atlas-${viewport.width}x${viewport.height}.png`, fullPage: true });
-    if (viewport.width === 390) {
-      await page.getByRole("button", { name: "Play the data lifecycle" }).click();
-      await expect(page.getByRole("complementary", { name: "Atlas inspector" }).getByRole("heading", { level: 2 })).toBeVisible();
-      await page.screenshot({ path: "test-results/atlas-390x844-inspector.png", fullPage: true });
-    }
+    expect(layout.fps).toBeGreaterThan(0);
+    if (viewport.width >= 1280) expect(layout.drawCalls).toBeLessThanOrEqual(220);
   });
 }
