@@ -4,11 +4,10 @@ import { COMPANY_ARCHITECTURE_RECIPES, companyArchitectureRecipeById, declaredRe
 import { COMPANY_IMPLEMENTATIONS, companyImplementationById, matchCompanyImplementations, type CompanyImplementation } from "../data/companyImplementations";
 import { DISTRICTS, MECHANISMS, mechanismById, searchMechanisms } from "../data/mechanisms";
 import { LATEST_READ_STRATEGIES, MERGE_FAMILIES, mergeFamilyById, mergeFamilySupportsReadStrategy } from "../data/mergeFamilies";
-import { OPERATIONAL_SCENARIOS, OPERATIONAL_SCENARIO_IDS, operationalScenarioById } from "../data/operationalScenarios";
 import { nearestUseCaseJourney } from "../data/useCaseJourneys";
 import { recommendArchitecture, workloadProfileSchema } from "../lib/advisor";
 import { useAtlasStore } from "../store/useAtlasStore";
-import type { ArchitectureRecommendation, LatestReadStrategy, MechanismId, MergeFamilyId, ScenarioMode } from "../types";
+import type { LatestReadStrategy, MechanismId, MergeFamilyId } from "../types";
 
 type JsonSchema = Record<string, unknown>;
 
@@ -36,8 +35,6 @@ const latestReadSchema = z.enum(latestReadValues);
 const implementationValues = COMPANY_IMPLEMENTATIONS.map((entry) => entry.id) as [string, ...string[]];
 const implementationSchema = z.enum(implementationValues);
 const implementationJsonSchema = { enum: implementationValues };
-const operationalScenarioSchema = z.enum(OPERATIONAL_SCENARIO_IDS);
-const operationalScenarioJsonSchema = { enum: OPERATIONAL_SCENARIO_IDS };
 const emptySchema = { type: "object", additionalProperties: false };
 
 const workloadJsonSchema: JsonSchema = {
@@ -148,20 +145,6 @@ function implementationSummary(implementation: CompanyImplementation) {
   };
 }
 
-function scenarioAvoidanceSummary(scenarioId: ScenarioMode, recommendation?: ArchitectureRecommendation | null) {
-  const scenario = operationalScenarioById(scenarioId);
-  const decision = scenario.primaryMechanismId
-    ? recommendation?.decisions.find((entry) => entry.mechanismId === scenario.primaryMechanismId)
-    : undefined;
-  return {
-    personalized: Boolean(decision),
-    recommendation: decision?.recommendation ?? scenario.lesson,
-    rationale: decision?.rationale ?? scenario.description,
-    alternatives: decision?.alternatives.slice(0, 3) ?? [],
-    evidenceIds: decision?.evidenceIds.slice(0, 4) ?? [],
-  };
-}
-
 export function createToolDefinitions(): ToolDefinition[] {
   return [
     {
@@ -185,14 +168,17 @@ export function createToolDefinitions(): ToolDefinition[] {
             architectureRecipes: COMPANY_ARCHITECTURE_RECIPES.length,
           },
           views: ["system", "mechanism", "xray"],
-          scenarios: OPERATIONAL_SCENARIOS.filter((scenario) => scenario.id !== "pressure").map((scenario) => ({
-            id: scenario.id,
-            title: scenario.title,
-            setting: scenario.setting,
-            settingValue: scenario.settingValue,
-            primaryMechanismId: scenario.primaryMechanismId,
-            affectedMechanismIds: scenario.affectedMechanismIds,
-          })),
+          experience: {
+            mode: "stable-architecture-guidance",
+            purpose: "Turn a bounded workload description into a healthy ClickHouse architecture and explain each choice in the 3D world.",
+            userCanAsk: [
+              "Which MergeTree family fits my update model?",
+              "How should I batch and ingest this workload?",
+              "Should I use a materialized view or a projection?",
+              "What should I validate before production?",
+              "Show me a reviewed company architecture with similar constraints.",
+            ],
+          },
         };
       },
     },
@@ -212,17 +198,26 @@ export function createToolDefinitions(): ToolDefinition[] {
         useAtlasStore.getState().setMergeFamily(journey.familyId);
         useAtlasStore.getState().setLatestReadStrategy(mergeFamilyRecommendation.latestReadStrategy);
         useAtlasStore.getState().startJourney(journey.id);
-        return { ...recommendation, mergeFamilyRecommendation: { ...mergeFamilyRecommendation, family: mergeFamilySummary(mergeFamilyRecommendation.familyId) }, journey: { id: journey.id, title: journey.title, agentLog: journey.agentLog, guidePath: journey.guidePath, tradeoff: journey.tradeoff } };
+        return {
+          ...recommendation,
+          mergeFamilyRecommendation: { ...mergeFamilyRecommendation, family: mergeFamilySummary(mergeFamilyRecommendation.familyId) },
+          journey: { id: journey.id, title: journey.title, agentLog: journey.agentLog, guidePath: journey.guidePath, tradeoff: journey.tradeoff },
+          userGuide: {
+            mode: "stable-architecture",
+            outcome: "A reviewed architecture path, visible mechanism by mechanism, with alternatives, tradeoffs, evidence, and production validation steps.",
+            nextActions: recommendation.validationSteps.slice(0, 5),
+          },
+        };
       },
     },
     {
       name: "play_architecture_story",
-      title: "Play the recommended architecture",
-      description: "Animate the latest recommendation or one reviewed company's declared architecture through its exact mechanism path.",
-      inputSchema: { type: "object", additionalProperties: false, properties: { scenario: operationalScenarioJsonSchema, implementationId: implementationJsonSchema } },
+      title: "Walk through a stable architecture",
+      description: "Animate the latest healthy recommendation or one reviewed company's declared architecture through its exact mechanism path.",
+      inputSchema: { type: "object", additionalProperties: false, properties: { implementationId: implementationJsonSchema } },
       annotations: { readOnlyHint: false, untrustedContentHint: false },
       execute: async (input) => {
-        const { scenario, implementationId } = z.object({ scenario: operationalScenarioSchema.optional(), implementationId: implementationSchema.optional() }).strict().parse(input);
+        const { implementationId } = z.object({ implementationId: implementationSchema.optional() }).strict().parse(input);
         if (implementationId) {
           const implementation = companyImplementationById(implementationId)!;
           const recipe = companyArchitectureRecipeById(implementationId)!;
@@ -230,17 +225,22 @@ export function createToolDefinitions(): ToolDefinition[] {
           const family = recipe.mergeFamilyIds[0];
           if (family) useAtlasStore.getState().setMergeFamily(family);
           useAtlasStore.getState().setLatestReadStrategy(declaredRecipeReadStrategy(recipe));
+          useAtlasStore.getState().setScenario("healthy");
           useAtlasStore.getState().playStory("architecture", recipe.mechanismPath);
-          const scenarioId = scenario ?? "healthy";
-          useAtlasStore.getState().setScenario(scenarioId);
-          return { ok: true, scenario: operationalScenarioById(scenarioId), avoidance: scenarioAvoidanceSummary(scenarioId), story: "company-architecture", implementation: implementationSummary(implementation) };
+          return { ok: true, mode: "stable-architecture", story: "company-architecture", implementation: implementationSummary(implementation) };
         }
         const recommendation = useAtlasStore.getState().recommendation;
         if (!recommendation) return { ok: false, message: "Create a recommendation first." };
+        useAtlasStore.getState().setScenario("healthy");
         useAtlasStore.getState().playStory("architecture", recommendation.path);
-        const scenarioId = scenario ?? "healthy";
-        useAtlasStore.getState().setScenario(scenarioId);
-        return { ok: true, scenario: operationalScenarioById(scenarioId), avoidance: scenarioAvoidanceSummary(scenarioId, recommendation), path: recommendation.path, summary: recommendation.summary };
+        return {
+          ok: true,
+          mode: "stable-architecture",
+          path: recommendation.path,
+          summary: recommendation.summary,
+          tradeoffs: recommendation.tradeoffs,
+          validationSteps: recommendation.validationSteps,
+        };
       },
     },
     {

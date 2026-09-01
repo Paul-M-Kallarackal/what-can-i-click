@@ -12,7 +12,7 @@ test("keeps the single MergeTree scenario card readable at compact desktop heigh
     await expect(workbench).toBeVisible();
     await expect(workbench.getByRole("heading", { name: "MergeTree" })).toBeVisible();
     await expect(scenario).toContainText("Steady ClickHouse");
-    await expect(page.getByRole("button", { name: "Scenario Steady" })).toBeVisible();
+    await expect(page.getByLabel("Stable architecture walkthrough")).toContainText("Fit ClickHouse to my workload");
     await expect(page.getByRole("textbox", { name: "Search mechanisms and evidence" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /10 use cases/ })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Open accessible system map" })).toHaveCount(0);

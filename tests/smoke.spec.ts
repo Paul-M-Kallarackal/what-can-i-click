@@ -11,7 +11,7 @@ test("renders the MergeTree foundry without browser or WebGL errors", async ({ p
   await expect(page.getByRole("heading", { name: "MergeTree" })).toBeVisible();
   await expect(page.locator("canvas")).toBeVisible();
   await expect(page.locator(".foundry-legend")).toContainText("Part A / B / C");
-  await expect(page.locator(".world-canvas").getByText("MERGETREE", { exact: true })).toBeVisible();
+  await expect(page.locator(".world-canvas").getByText("ACTIVE PARTS · IMMUTABLE COLUMN FILES", { exact: true })).toBeVisible();
   await page.waitForFunction(() => Number(document.documentElement.dataset.sceneFps) > 0);
   const canvasSignal = await page.locator("canvas").evaluate((canvas: HTMLCanvasElement) => {
     const context = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
@@ -211,14 +211,12 @@ test("keeps agent-only journeys, search, and the text system map out of the manu
   await expect(page.locator(".journey-panel")).toHaveCount(0);
 });
 
-test("a pressure scenario focuses its mechanism and explains how to avoid it", async ({ page }) => {
+test("keeps the manual world stable and hands personalization to WebMCP", async ({ page }) => {
   await page.goto("/", { waitUntil: "domcontentloaded" });
-  await page.locator(".scenario-picker__trigger").click();
-  await page.getByRole("menuitemradio", { name: /Tiny insert storm/ }).click();
-  const inspector = page.getByRole("complementary", { name: "ClickHouse mechanism inspector" });
-  await expect(inspector.getByRole("heading", { name: "Tiny insert storm" })).toBeVisible();
-  await expect(inspector.locator(".scenario-recommendation")).toContainText("Batch at the client or use asynchronous inserts");
-  await expect(page.locator(".scenario-picker__trigger")).toContainText("Tiny inserts");
+  await expect(page.getByLabel("Stable architecture walkthrough")).toContainText("Fit ClickHouse to my workload");
+  await expect(page.getByRole("menu", { name: "ClickHouse operational scenarios" })).toHaveCount(0);
+  await expect(page.locator(".merge-tree-monument-label")).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "ClickHouse model telemetry" })).toContainText("Steady");
 });
 
 test("respects reduced motion", async ({ page }) => {

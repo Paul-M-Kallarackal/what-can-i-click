@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("keeps the white MergeTree foundry legible on desktop and mobile", async ({ page }) => {
+test("keeps the white MergeTree foundry and stable agent handoff legible", async ({ page }) => {
   test.setTimeout(60_000);
   const browserErrors: string[] = [];
   page.on("console", (message) => { if (message.type() === "error") browserErrors.push(message.text()); });
@@ -18,12 +18,14 @@ test("keeps the white MergeTree foundry legible on desktop and mobile", async ({
       const read = (selector: string) => Number.parseFloat(getComputedStyle(element.querySelector<HTMLElement>(selector)!).fontSize);
       const panel = element.getBoundingClientRect();
       const controls = document.querySelector<HTMLElement>(".simulation-dock")!.getBoundingClientRect();
+      const guide = document.querySelector<HTMLElement>(".stable-guide")!;
       return {
         background: getComputedStyle(document.querySelector<HTMLElement>(".app-shell")!).backgroundColor,
         heading: read(".merge-title-row h1"),
         body: read(":scope > header p"),
         scenarioTitle: read(".merge-scenario-card > header > strong"),
         scenarioBody: read(".merge-scenario-card > p"),
+        guideTitle: Number.parseFloat(getComputedStyle(guide.querySelector("strong")!).fontSize),
         horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
         insideViewport: panel.left >= 0 && panel.top >= 0 && panel.right <= innerWidth && panel.bottom <= innerHeight,
         aboveControls: panel.bottom < controls.top,
@@ -35,23 +37,11 @@ test("keeps the white MergeTree foundry legible on desktop and mobile", async ({
     expect(metrics.body).toBeGreaterThanOrEqual(16);
     expect(metrics.scenarioTitle).toBeGreaterThanOrEqual(20);
     expect(metrics.scenarioBody).toBeGreaterThanOrEqual(15);
+    expect(metrics.guideTitle).toBeGreaterThanOrEqual(12);
     expect(metrics.horizontalOverflow).toBe(false);
     expect(metrics.insideViewport).toBe(true);
     expect(metrics.aboveControls).toBe(true);
-
-    const scenarioButton = page.locator(".scenario-picker__trigger");
-    await scenarioButton.click();
-    const menu = page.getByRole("menu", { name: "ClickHouse operational scenarios" });
-    await expect(menu).toBeVisible();
-    await expect(menu.getByRole("menuitemradio")).toHaveCount(8);
-    const menuMetrics = await menu.evaluate((element) => ({
-      overflow: element.scrollWidth > element.clientWidth + 1,
-      title: Number.parseFloat(getComputedStyle(element.querySelector("header strong")!).fontSize),
-      item: Number.parseFloat(getComputedStyle(element.querySelector("button strong")!).fontSize),
-    }));
-    expect(menuMetrics.overflow).toBe(false);
-    expect(menuMetrics.title).toBeGreaterThanOrEqual(15);
-    expect(menuMetrics.item).toBeGreaterThanOrEqual(13);
+    await expect(page.getByLabel("Stable architecture walkthrough")).toContainText("Fit ClickHouse to my workload");
   }
 
   expect(browserErrors).toEqual([]);

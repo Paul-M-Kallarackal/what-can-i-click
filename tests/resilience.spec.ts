@@ -48,7 +48,7 @@ async function expectResponsiveShell(page: Page, width: number) {
   ).toBeLessThanOrEqual(1);
 
   await expect(page.getByRole("button", { name: "Pause simulation" })).toBeVisible();
-  await expect(page.locator(".scenario-picker__trigger")).toBeVisible();
+  await expect(page.getByLabel("Stable architecture walkthrough")).toBeVisible();
   await expect(page.getByRole("complementary", { name: "MergeTree workbench" })).toBeVisible();
   await expect(page.getByRole("button", { name: /10 use cases/ })).toHaveCount(0);
 
@@ -64,18 +64,18 @@ async function expectResponsiveShell(page: Page, width: number) {
 test.describe("responsive and interaction stress", () => {
   test.describe.configure({ mode: "serial" });
 
-  test("rapidly switches MergeTree pressure scenarios without losing WebGL", async ({ page }) => {
+  test("replays the stable MergeTree machine without losing WebGL", async ({ page }) => {
     test.setTimeout(60_000);
     const monitor = monitorBrowser(page);
     await page.goto("/", { waitUntil: "domcontentloaded" });
     await expect(page.locator("canvas")).toBeVisible();
 
-    for (let round = 0; round < 2; round += 1) {
-      for (const scenario of [/Tiny insert storm/, /Partition explosion/, /ORDER BY misses the filter/]) {
-        await page.locator(".scenario-picker__trigger").click();
-        await page.getByRole("menuitemradio", { name: scenario }).click();
-        await expect(page.getByRole("complementary", { name: "ClickHouse mechanism inspector" })).toBeVisible();
-      }
+    for (let round = 0; round < 4; round += 1) {
+      await page.getByRole("button", { name: "Pause simulation" }).click();
+      await expect(page.getByRole("button", { name: "Play simulation" })).toBeVisible();
+      await page.getByRole("button", { name: "Play simulation" }).click();
+      await page.getByRole("button", { name: "Reset foundry" }).click();
+      await expect(page.getByLabel("Stable architecture walkthrough")).toContainText("Fit ClickHouse to my workload");
     }
 
     await page.waitForTimeout(500);
@@ -99,12 +99,12 @@ test.describe("responsive and interaction stress", () => {
       await expectHealthyWebGl(page);
     }
 
-    const scenarioBounds = await page.locator(".scenario-picker__trigger").evaluate((element) => {
+    const guideBounds = await page.getByLabel("Stable architecture walkthrough").evaluate((element) => {
       const bounds = element.getBoundingClientRect();
       return { left: bounds.left, right: bounds.right };
     });
-    expect(scenarioBounds.left).toBeGreaterThanOrEqual(-1);
-    expect(scenarioBounds.right).toBeLessThanOrEqual(391);
+    expect(guideBounds.left).toBeGreaterThanOrEqual(-1);
+    expect(guideBounds.right).toBeLessThanOrEqual(391);
     monitor.expectClean();
   });
 

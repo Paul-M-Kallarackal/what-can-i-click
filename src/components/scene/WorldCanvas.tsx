@@ -68,132 +68,8 @@ function viewportProfile(width: number, height: number): SceneViewport {
 
 const columnColors = ["#FFCC01", "#78D7D2", "#F0A43A", "#8F82CE", "#DDE47A", "#F36F5F"];
 
-type MonumentBranchSpec = {
-  position: [number, number, number];
-  quaternion: THREE.Quaternion;
-  length: number;
-  radius: number;
-};
-
-function monumentBranch(
-  from: [number, number, number],
-  to: [number, number, number],
-  radius: number,
-): MonumentBranchSpec {
-  const start = new THREE.Vector3(...from);
-  const end = new THREE.Vector3(...to);
-  const direction = end.clone().sub(start);
-  return {
-    position: start.add(end).multiplyScalar(0.5).toArray() as [number, number, number],
-    quaternion: new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.clone().normalize()),
-    length: direction.length(),
-    radius,
-  };
-}
-
-const MERGETREE_MONUMENT_BRANCHES = [
-  monumentBranch([0, 0.18, 0], [0.05, 3.7, 0], 0.34),
-  monumentBranch([0.03, 1.05, 0], [-0.65, 0.2, 0.48], 0.16),
-  monumentBranch([0.02, 1.18, 0], [0.72, 0.2, -0.4], 0.15),
-  monumentBranch([0.02, 1.4, 0], [-0.9, 0.22, -0.32], 0.13),
-  monumentBranch([0.02, 2.05, 0], [-1.55, 4.35, 0.18], 0.2),
-  monumentBranch([0.04, 2.28, 0], [1.55, 4.65, -0.12], 0.22),
-  monumentBranch([0.04, 2.72, 0], [-0.72, 5.38, -0.54], 0.18),
-  monumentBranch([0.04, 2.95, 0], [0.68, 5.7, 0.48], 0.17),
-  monumentBranch([-0.78, 3.5, 0.1], [-2.18, 4.88, 0.48], 0.12),
-  monumentBranch([-0.72, 3.7, 0.05], [-1.15, 5.55, -0.32], 0.1),
-  monumentBranch([0.86, 3.55, -0.06], [2.12, 5.08, -0.38], 0.12),
-  monumentBranch([0.74, 3.92, 0.08], [1.28, 5.88, 0.38], 0.1),
-  monumentBranch([-0.36, 4.38, -0.28], [-1.48, 6.08, -0.58], 0.09),
-  monumentBranch([0.35, 4.52, 0.28], [1.26, 6.2, 0.58], 0.09),
-  monumentBranch([0.04, 3.62, 0], [0.02, 6.48, 0.02], 0.14),
-];
-
-const MERGETREE_CANOPY = [
-  { y: -0.92, radius: 2.36, count: 16 },
-  { y: -0.24, radius: 2.62, count: 20 },
-  { y: 0.52, radius: 2.2, count: 18 },
-  { y: 1.18, radius: 1.55, count: 14 },
-  { y: 1.78, radius: 0.82, count: 9 },
-].flatMap((layer, layerIndex) => Array.from({ length: layer.count }, (_, index) => {
-  const angle = index / layer.count * Math.PI * 2 + layerIndex * 0.71;
-  const wave = 0.78 + ((index * 7 + layerIndex * 3) % 5) * 0.055;
-  const scale = 0.54 + ((index * 11 + layerIndex * 5) % 7) * 0.045;
-  return {
-    position: [
-      Math.cos(angle) * layer.radius * wave,
-      layer.y + Math.sin(index * 1.83 + layerIndex) * 0.2,
-      Math.sin(angle) * layer.radius * 0.68 * wave,
-    ] as [number, number, number],
-    rotation: [index * 0.21, angle * 0.34, layerIndex * 0.17] as [number, number, number],
-    scale: [scale * 1.16, scale * 0.92, scale] as [number, number, number],
-    color: ["#6E8662", "#829971", "#96A982", "#A9B991", "#788E68"][(index + layerIndex * 2) % 5],
-  };
-}));
-
-const MERGETREE_LEAF_TIPS = MERGETREE_CANOPY.flatMap((cluster, clusterIndex) => Array.from({ length: 3 }, (_, tipIndex) => {
-  const angle = clusterIndex * 1.37 + tipIndex * Math.PI * 2 / 3;
-  const distance = 0.5 + ((clusterIndex + tipIndex) % 4) * 0.07;
-  const scale = 0.18 + ((clusterIndex * 3 + tipIndex) % 5) * 0.022;
-  return {
-    position: [
-      cluster.position[0] + Math.cos(angle) * distance,
-      cluster.position[1] + Math.sin(angle * 1.7) * 0.34,
-      cluster.position[2] + Math.sin(angle) * distance * 0.7,
-    ] as [number, number, number],
-    rotation: [angle * 0.4, angle, angle * 0.22] as [number, number, number],
-    scale,
-    color: ["#627B58", "#8EA17B", "#B1BF98", "#758C66"][(clusterIndex + tipIndex) % 4],
-  };
-}));
-
 function MachinePlate({ position, size, color = "#24272A" }: { position: [number, number, number]; size: [number, number, number]; color?: string }) {
   return <RoundedBox args={size} radius={0.14} smoothness={4} position={position} castShadow receiveShadow><meshStandardMaterial color={color} roughness={0.34} metalness={0.46} /></RoundedBox>;
-}
-
-/**
- * An original MergeTree monument inspired by the reference's density and
- * silhouette, not its source assets. Instanced low-poly foliage keeps the
- * background landmark rich without consuming the foundry's draw-call budget.
- */
-function MergeTreeMonument({ pressure }: { pressure: boolean }) {
-  const crown = useRef<THREE.Group>(null);
-  const getTime = useMachineTime();
-  const reducedMotion = useAtlasStore((state) => state.reducedMotion);
-  useFrame(() => {
-    if (!crown.current) return;
-    const time = getTime();
-    crown.current.rotation.z = reducedMotion ? 0 : Math.sin(time * 0.18) * 0.008;
-    crown.current.rotation.x = reducedMotion ? 0 : Math.sin(time * 0.13 + 0.8) * 0.004;
-  });
-  return (
-    <group position={[0.25, 0, -4.35]} scale={0.94}>
-      <RoundedBox args={[4.7, 0.18, 3.35]} radius={0.08} smoothness={3} position={[0, 0.06, 0]} receiveShadow>
-        <meshStandardMaterial color="#ECEDE7" roughness={0.82} metalness={0.02} />
-      </RoundedBox>
-      {MERGETREE_MONUMENT_BRANCHES.map((branch, index) => <mesh key={index} position={branch.position} quaternion={branch.quaternion} castShadow>
-        <cylinderGeometry args={[branch.radius * 0.72, branch.radius, branch.length, 7]} />
-        <meshStandardMaterial color={pressure ? "#785047" : index % 3 === 0 ? "#4C4036" : "#5B4A3B"} roughness={0.86} />
-      </mesh>)}
-      <group ref={crown} position={[0, 5.18, 0]}>
-        <Instances limit={MERGETREE_CANOPY.length} castShadow>
-          <dodecahedronGeometry args={[0.54, 0]} />
-          <meshStandardMaterial color="#FFFFFF" roughness={0.88} metalness={0} />
-          {MERGETREE_CANOPY.map((cluster, index) => <Instance key={index} position={cluster.position} rotation={cluster.rotation} scale={cluster.scale} color={pressure ? (index % 3 ? "#A36C5E" : "#C08170") : cluster.color} />)}
-        </Instances>
-        <Instances limit={MERGETREE_LEAF_TIPS.length} castShadow>
-          <dodecahedronGeometry args={[1, 0]} />
-          <meshStandardMaterial color="#FFFFFF" roughness={0.84} metalness={0} />
-          {MERGETREE_LEAF_TIPS.map((leaf, index) => <Instance key={index} position={leaf.position} rotation={leaf.rotation} scale={leaf.scale} color={pressure ? (index % 2 ? "#B87564" : "#8E5B50") : leaf.color} />)}
-        </Instances>
-      </group>
-      <mesh position={[0, 0.18, 1.38]}>
-        <boxGeometry args={[1.65, 0.12, 0.34]} />
-        <meshStandardMaterial color="#15171A" roughness={0.42} />
-      </mesh>
-      <Html pointerEvents="none" center position={[0, 0.36, 1.38]} distanceFactor={11}><span className="merge-tree-monument-label">MERGETREE</span></Html>
-    </group>
-  );
 }
 
 function ColumnFiles({ exploded }: { exploded: boolean }) {
@@ -3537,7 +3413,6 @@ function BlockFoundryMachine({ exploded, mobile, pressure, scenario }: { explode
   return (
     <group>
       {!exploded && <group ref={machine}>
-        <MergeTreeMonument pressure={pressure} />
         {scenario === "partition-explosion" ? <PartitionExplosionVisualization /> : scenario === "tiny-insert-storm" ? <TinyInsertStormVisualization /> : <>
           <MachinePlate position={[-2.7, 0.32, 1.55]} size={[3.6, 0.18, 3.05]} color="#D7D8D4" />
           <MachinePlate position={[3.55, 0.3, -1.5]} size={[6.4, 0.18, 3.5]} color="#D7D8D4" />

@@ -6,7 +6,7 @@ What can I Click makes ClickHouse gotchas visible. Its interactive 3D foundry sh
 
 WebMCP makes those lessons specific to a visitor's workload. A WebMCP-capable agent can select the relevant reviewed mechanisms, recommend safer patterns, explain tradeoffs, and return validation steps without executing SQL or reading a private cluster.
 
-> **Project status:** Hackathon prototype under active visual review. The current manual experience deliberately focuses on one polished MergeTree foundry and eight operating scenarios. The broader mechanism and evidence registries remain available to WebMCP recommendations.
+> **Project status:** Hackathon prototype under active visual review. The manual experience now stays on one polished, healthy MergeTree foundry. WebMCP applies the broader gotcha, mechanism, and evidence registries only when a user asks for workload-specific guidance.
 
 ## Why this exists
 
@@ -39,7 +39,7 @@ CollapsingMergeTree now shows one valid producer history rather than two anonymo
 
 VersionedCollapsingMergeTree turns version matching into a routing system. A v2 state arrives first, followed by a v1 cancel and then the v1 state; the router still pairs only the same-key v1 rows with opposite signs. The v1 pair collapses and v2 survives, making the engine’s order-independent write advantage and exact-version producer obligation visible.
 
-The primary experience uses a consistent physical vocabulary: immutable white cassettes, visible column files, a working crane, a black merge worker, a newly written Part C, and a rear retirement bin for Parts A and B. An original low-poly tree behind the foundry makes the MergeTree name memorable without replacing the storage mechanics. A compact agent trace walks a workload through the reviewed mechanisms and tradeoffs chosen for that use case.
+The primary experience uses a consistent physical vocabulary: immutable white cassettes, visible column files, a working crane, a black merge worker, a newly written Part C, and a rear retirement bin for Parts A and B. There is no decorative tree or manual failure-mode picker. When an agent supplies a bounded workload, a compact trace walks the user through the reviewed mechanisms, decisions, tradeoffs, and validation steps chosen for that use case.
 
 ## WebMCP tools
 
@@ -49,7 +49,7 @@ The app registers seven bounded tools when `document.modelContext` is available:
 | --- | --- | --- |
 | `describe_clickhouse_world` | Describe reviewed MergeTree behavior, mechanisms, and evidence | No |
 | `recommend_clickhouse_architecture` | Build a deterministic recommendation and stage its relevant mechanism path | Yes |
-| `play_architecture_story` | Animate a recommendation path | Yes |
+| `play_architecture_story` | Animate the healthy recommendation path or a reviewed company architecture | Yes |
 | `inspect_clickhouse_mechanism` | Focus a reviewed mechanism; optionally select a bounded family/read behavior | Yes |
 | `compare_clickhouse_methods` | Align two mechanisms, compare `argMax` with `FINAL`, compare materialized views with projections, or open two reviewed production accounts side by side | Yes |
 | `search_clickhouse_evidence` | Search the bounded public evidence corpus | No |

@@ -107,150 +107,31 @@ describe("WebMCP tools", () => {
     expect(useAtlasStore.getState()).toMatchObject({ selectedMechanismId: null, viewLevel: "system", comparisonIds: null });
   });
 
-  it("plays named ClickHouse pressure scenarios and focuses their real mechanism", async () => {
+  it("keeps architecture playback in the stable case", async () => {
     const tools = createToolDefinitions();
     const recommend = tools.find((tool) => tool.name === "recommend_clickhouse_architecture")!;
     const play = tools.find((tool) => tool.name === "play_architecture_story")!;
 
-    await recommend.execute(profile);
-    const result = await play.execute({ scenario: "aggregation-spill" });
-
-    expect(result).toMatchObject({
-      ok: true,
-      scenario: {
-        id: "aggregation-spill",
-        primaryMechanismId: "memory.external-spill",
+    const recommendation = await recommend.execute(profile);
+    expect(recommendation).toMatchObject({
+      userGuide: {
+        mode: "stable-architecture",
+        outcome: expect.stringMatching(/tradeoffs, evidence, and production validation/i),
+        nextActions: expect.any(Array),
       },
-      avoidance: {
-        personalized: true,
-        recommendation: expect.stringMatching(/worst-case distinct count|precompute repeated high-cardinality|max_bytes_before_external_group_by/i),
-        rationale: expect.stringMatching(/partial state|temporary writes|merge phase/i),
-        evidenceIds: expect.arrayContaining(["docs-external-aggregation", "docs-materialized-views"]),
-      },
-    });
-    expect(useAtlasStore.getState()).toMatchObject({
-      scenario: "aggregation-spill",
-      selectedMechanismId: "memory.external-spill",
     });
 
-    const replicaLag = await play.execute({ scenario: "replica-lag" });
-    expect(replicaLag).toMatchObject({
+    expect(await play.execute({})).toMatchObject({
       ok: true,
-      scenario: {
-        id: "replica-lag",
-        primaryMechanismId: "observability.replication-queue",
-      },
-      avoidance: {
-        personalized: true,
-        recommendation: expect.stringMatching(/queue size|oldest-task age|GET_PART|MERGE_PARTS/i),
-        rationale: expect.stringMatching(/asynchronous|fetch compressed part bytes|local work/i),
-        evidenceIds: expect.arrayContaining(["docs-replication-queue", "docs-system-replicas", "docs-replication"]),
-      },
+      mode: "stable-architecture",
+      path: expect.arrayContaining(["architecture.sharding", "architecture.keeper"]),
+      validationSteps: expect.any(Array),
     });
     expect(useAtlasStore.getState()).toMatchObject({
-      scenario: "replica-lag",
-      selectedMechanismId: "observability.replication-queue",
+      scenario: "healthy",
+      storyMode: "architecture",
     });
-
-    const keeperLoss = await play.execute({ scenario: "keeper-quorum-loss" });
-    expect(keeperLoss).toMatchObject({
-      ok: true,
-      scenario: {
-        id: "keeper-quorum-loss",
-        primaryMechanismId: "architecture.keeper",
-      },
-      avoidance: {
-        personalized: true,
-        recommendation: expect.stringMatching(/three voting Keeper nodes|independent failure domains|2 \/ 3 majority/i),
-        rationale: expect.stringMatching(/Raft|coordination|row bytes/i),
-        evidenceIds: expect.arrayContaining(["docs-keeper", "docs-readonly-tables", "docs-replication"]),
-      },
-    });
-    expect(useAtlasStore.getState()).toMatchObject({
-      scenario: "keeper-quorum-loss",
-      selectedMechanismId: "architecture.keeper",
-    });
-
-    const tinyInsert = await play.execute({ scenario: "tiny-insert-storm" });
-    expect(tinyInsert).toMatchObject({
-      ok: true,
-      scenario: {
-        id: "tiny-insert-storm",
-        primaryMechanismId: "mergetree.parts-pressure",
-      },
-      avoidance: {
-        personalized: true,
-        recommendation: expect.stringMatching(/asynchronous inserts/i),
-        evidenceIds: expect.arrayContaining(["docs-mergetree", "docs-async-inserts"]),
-      },
-    });
-    expect(useAtlasStore.getState()).toMatchObject({
-      scenario: "tiny-insert-storm",
-      selectedMechanismId: "mergetree.parts-pressure",
-    });
-
-    const partitionExplosion = await play.execute({ scenario: "partition-explosion" });
-    expect(partitionExplosion).toMatchObject({
-      ok: true,
-      scenario: {
-        id: "partition-explosion",
-        primaryMechanismId: "mergetree.partition-boundary",
-      },
-      avoidance: {
-        personalized: true,
-        recommendation: expect.stringMatching(/years retention|partitioning only/i),
-        evidenceIds: expect.arrayContaining(["docs-partitioning-key", "docs-mergetree"]),
-      },
-    });
-    expect(useAtlasStore.getState()).toMatchObject({
-      scenario: "partition-explosion",
-      selectedMechanismId: "mergetree.partition-boundary",
-    });
-
-    await recommend.execute({
-      ...profile,
-      workload: "cdc",
-      ingestRate: "high",
-      retention: "months",
-      updates: "frequent",
-    });
-    const backgroundContention = await play.execute({ scenario: "merge-ttl-contention" });
-    expect(backgroundContention).toMatchObject({
-      ok: true,
-      scenario: {
-        id: "merge-ttl-contention",
-        primaryMechanismId: "observability.merges",
-      },
-      avoidance: {
-        personalized: true,
-        recommendation: expect.stringMatching(/appended versions|do not overlap broad mutations|separate windows/i),
-        rationale: expect.stringMatching(/finite CPU and storage path/i),
-        evidenceIds: expect.arrayContaining(["docs-system-merges", "docs-ttl", "docs-mutations"]),
-      },
-    });
-    expect(useAtlasStore.getState()).toMatchObject({
-      scenario: "merge-ttl-contention",
-      selectedMechanismId: "observability.merges",
-    });
-
-    const badOrdering = await play.execute({ scenario: "bad-order-by" });
-    expect(badOrdering).toMatchObject({
-      ok: true,
-      scenario: {
-        id: "bad-order-by",
-        primaryMechanismId: "read.ordering",
-      },
-      avoidance: {
-        personalized: true,
-        recommendation: expect.stringMatching(/business key|version or event time|EXPLAIN indexes/i),
-        rationale: expect.stringMatching(/contiguous ranges|sparse marks/i),
-        evidenceIds: expect.arrayContaining(["docs-primary-index"]),
-      },
-    });
-    expect(useAtlasStore.getState()).toMatchObject({
-      scenario: "bad-order-by",
-      selectedMechanismId: "read.ordering",
-    });
+    await expect(play.execute({ scenario: "tiny-insert-storm" })).rejects.toThrow();
   });
 
   it("focuses living MergeTree families and compares argMax with FINAL", async () => {
