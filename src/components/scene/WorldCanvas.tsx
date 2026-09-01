@@ -450,30 +450,29 @@ function FoundryCrane({ pressure }: { pressure: boolean }) {
   );
 }
 
-// Keep retired source parts in a clearly secondary, rear-right service bay.
-// The camera views the foundry from +x / +z, so combining a deeper negative z
-// with a positive x offset prevents the bin from projecting over the central
-// merge worker while keeping the A/B retirement journey visible.
-const RETIREMENT_BIN_POSITION = { x: 2.25, y: 0.12, z: -4.2 } as const;
+// Keep retired source parts at the far rear service edge. Depth does most of
+// the separation here; a small x offset keeps the bin readable without letting
+// it project over the merge worker from the default camera.
+const RETIREMENT_BIN_POSITION = { x: 1.05, y: 0.08, z: -5.65 } as const;
 
 function PartRetirementBin({ pressure }: { pressure: boolean }) {
   const rimColor = pressure ? COLORS.pressure : COLORS.yellow;
   return (
     <group position={[RETIREMENT_BIN_POSITION.x, RETIREMENT_BIN_POSITION.y, RETIREMENT_BIN_POSITION.z]}>
-      <RoundedBox args={[1.82, 0.16, 1.48]} radius={0.06} smoothness={3} position={[0, 0, 0]} receiveShadow>
+      <RoundedBox args={[1.62, 0.14, 1.3]} radius={0.06} smoothness={3} position={[0, 0, 0]} receiveShadow>
         <meshStandardMaterial color="#323633" roughness={0.58} metalness={0.22} />
       </RoundedBox>
-      <RoundedBox args={[1.82, 0.82, 0.15]} radius={0.045} smoothness={3} position={[0, 0.46, -0.68]} castShadow>
+      <RoundedBox args={[1.62, 0.7, 0.14]} radius={0.045} smoothness={3} position={[0, 0.4, -0.58]} castShadow>
         <meshStandardMaterial color="#252927" roughness={0.42} metalness={0.38} />
       </RoundedBox>
-      <RoundedBox args={[1.82, 0.62, 0.15]} radius={0.045} smoothness={3} position={[0, 0.36, 0.68]} castShadow>
+      <RoundedBox args={[1.62, 0.54, 0.14]} radius={0.045} smoothness={3} position={[0, 0.32, 0.58]} castShadow>
         <meshStandardMaterial color="#252927" roughness={0.42} metalness={0.38} />
       </RoundedBox>
-      {[-0.84, 0.84].map((x) => <RoundedBox key={x} args={[0.15, 0.82, 1.22]} radius={0.045} smoothness={3} position={[x, 0.46, 0]} castShadow>
+      {[-0.74, 0.74].map((x) => <RoundedBox key={x} args={[0.14, 0.7, 1.04]} radius={0.045} smoothness={3} position={[x, 0.4, 0]} castShadow>
         <meshStandardMaterial color="#252927" roughness={0.42} metalness={0.38} />
       </RoundedBox>)}
-      <Line points={[[ -0.9, 0.9, -0.73], [0.9, 0.9, -0.73], [0.9, 0.9, 0.73], [-0.9, 0.9, 0.73], [-0.9, 0.9, -0.73]]} color={rimColor} lineWidth={3} />
-      <Html pointerEvents="none" center position={[0, 1.12, 0]} distanceFactor={9}><span className="retirement-bin-label">A + B · OLD PARTS BIN</span></Html>
+      <Line points={[[ -0.8, 0.78, -0.65], [0.8, 0.78, -0.65], [0.8, 0.78, 0.65], [-0.8, 0.78, 0.65], [-0.8, 0.78, -0.65]]} color={rimColor} lineWidth={3} />
+      <Html pointerEvents="none" center position={[0, 1, -0.18]} distanceFactor={9}><span className="retirement-bin-label">A + B · OLD PARTS BIN</span></Html>
     </group>
   );
 }
@@ -643,11 +642,11 @@ function SortedMergeLoom({ pressure }: { pressure: boolean }) {
         <Line points={[[ -0.72, 0.08, -0.48], [0.72, 0.08, -0.48], [0.72, 0.08, 0.48], [-0.72, 0.08, 0.48], [-0.72, 0.08, -0.48]]} color={COLORS.yellow} lineWidth={2.5} />
         <Html pointerEvents="none" center position={[0, 0.22, 0.84]} distanceFactor={9}><span className="part-c-destination-label">PART C OUTPUT</span></Html>
       </group>
-      <MachinePlate position={[RETIREMENT_BIN_POSITION.x, 0.08, RETIREMENT_BIN_POSITION.z]} size={[2.6, 0.12, 1.85]} color="#E4E4DF" />
+      <MachinePlate position={[RETIREMENT_BIN_POSITION.x, 0.05, RETIREMENT_BIN_POSITION.z]} size={[2.25, 0.1, 1.62]} color="#E4E4DF" />
       <PartRetirementBin pressure={pressure} />
       <group ref={retiredSourceA} position={[-2.32, 0.66, -1.03]} visible={false}><FoundryPartArtifact accent="#777D7A" muted /></group>
       <group ref={retiredSourceB} position={[-2.32, 0.66, 1.03]} visible={false}><FoundryPartArtifact accent="#777D7A" muted /></group>
-      <Html pointerEvents="none" center position={[RETIREMENT_BIN_POSITION.x, 1.88, RETIREMENT_BIN_POSITION.z]} distanceFactor={10}><span ref={lifecycleStatus} className="part-lifecycle-status" data-state="active" style={{ display: "none" }} /></Html>
+      <Html pointerEvents="none" center position={[RETIREMENT_BIN_POSITION.x, 1.58, RETIREMENT_BIN_POSITION.z - 0.18]} distanceFactor={10}><span ref={lifecycleStatus} className="part-lifecycle-status" data-state="active" style={{ display: "none" }} /></Html>
       <Html pointerEvents="none" center position={[-0.25, -1.15, 2.45]} distanceFactor={10}><span ref={status} className="foundry-label">WAITING FOR PART B</span></Html>
       <Html pointerEvents="none" center position={[-1.5, 1.12, 0]} distanceFactor={10}><span ref={streamLabel} className="merge-stream-label" style={{ display: "none" }}>PART A + PART B</span></Html>
     </group>
