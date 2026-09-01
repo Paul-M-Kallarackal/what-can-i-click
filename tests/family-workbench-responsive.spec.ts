@@ -1,4 +1,7 @@
 import { expect, test } from "@playwright/test";
+import { mergeFamilyById } from "../src/data/mergeFamilies";
+
+const mergeTree = mergeFamilyById("merge");
 
 test.describe("single MergeTree workbench responsiveness", () => {
   for (const height of [720, 912]) {
@@ -10,7 +13,7 @@ test.describe("single MergeTree workbench responsiveness", () => {
       const scenarioButton = page.getByRole("button", { name: "Scenario Steady" });
       await expect(workbench).toBeVisible();
       await expect(workbench.getByRole("heading", { name: "MergeTree" })).toBeVisible();
-      await expect(workbench.getByText("Append-only facts", { exact: true })).toBeVisible();
+      await expect(workbench.getByText(mergeTree.shortTitle, { exact: true })).toBeVisible();
       await expect(scenarioButton).toBeVisible();
       await expect(page.locator(".world-canvas canvas")).toBeVisible();
       await expect(workbench.getByRole("tab")).toHaveCount(0);
