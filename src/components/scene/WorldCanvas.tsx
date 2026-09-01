@@ -3691,7 +3691,7 @@ function MergeTreeVoxelLandmark({ mobile }: { mobile: boolean }) {
   }, []);
   const canopyColors = ["#FFCC01", "#F4B900", "#E2A000", "#FFD84A"];
   return (
-    <group position={[2.15, 0.02, -5.45]} scale={mobile ? 0.66 : 0.78} rotation={[0, -0.08, 0]}>
+    <group position={[0.15, 0.02, -5.7]} scale={mobile ? 0.58 : 0.68} rotation={[0, -0.08, 0]}>
       <Instances limit={MERGE_TREE_TRUNK_VOXELS.length} range={MERGE_TREE_TRUNK_VOXELS.length} castShadow>
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color="#15171A" roughness={0.38} metalness={0.3} />
