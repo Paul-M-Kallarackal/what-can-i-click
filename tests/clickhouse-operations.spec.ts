@@ -118,7 +118,7 @@ test.describe("ClickHouse operational world", () => {
     await page.getByRole("menuitemradio", { name: /Partition explosion/ }).click();
 
     const inspector = page.getByRole("complementary", { name: "ClickHouse mechanism inspector" });
-    await expect(inspector).toContainText("Partition boundary");
+    await expect(inspector).toContainText("Partition explosion");
     await expect(page.locator(".world-canvas").getByText("1 insert block → 480 partition values", { exact: true })).toBeVisible();
     await expect(page.locator(".world-canvas").getByText("480 isolated merge pools", { exact: true })).toBeVisible();
     await page.waitForFunction(() => document.documentElement.dataset.partitionPhase === "fanout", undefined, { timeout: 8_000 });
@@ -149,7 +149,7 @@ test.describe("ClickHouse operational world", () => {
     await page.getByRole("menuitemradio", { name: /Merge \+ TTL \+ mutation contention/ }).click();
 
     const inspector = page.getByRole("complementary", { name: "ClickHouse mechanism inspector" });
-    await expect(inspector).toContainText("system.merges");
+    await expect(inspector).toContainText("Merge + TTL + mutation contention");
     await expect(inspector.locator(".scenario-recommendation")).toContainText("Observe active work before forcing merges");
     await expect(page.locator(".contention-title")).toContainText("Three rewrite classes contend for finite scheduling and storage bandwidth");
     await expect(page.locator(".world-canvas").getByText("MODELED SHARED CAPACITY · NOT SERVER COUNT", { exact: true })).toBeVisible();
@@ -183,7 +183,7 @@ test.describe("ClickHouse operational world", () => {
     await page.getByRole("menuitemradio", { name: /ORDER BY misses the filter/ }).click();
 
     const inspector = page.getByRole("complementary", { name: "ClickHouse mechanism inspector" });
-    await expect(inspector).toContainText("Physical ordering");
+    await expect(inspector).toContainText("ORDER BY misses the filter");
     await expect(inspector.locator(".scenario-recommendation")).toContainText("EXPLAIN indexes");
     await expect(page.locator(".ordering-cause-callout")).toContainText("One filter value is scattered across 11 of 12 illustrated granules");
     await page.waitForFunction(() => document.documentElement.dataset.orderingPhase === "wide-scan", undefined, { timeout: 8_000 });
@@ -228,7 +228,7 @@ test.describe("ClickHouse operational world", () => {
       { timeout: 35_000, intervals: [250] },
     ).toBe("external-merge");
     const inspector = page.getByRole("complementary", { name: "ClickHouse mechanism inspector" });
-    await expect(inspector).toContainText("External GROUP BY spill");
+    await expect(inspector).toContainText("Aggregation spills to disk");
     await expect(inspector.locator(".scenario-recommendation")).toContainText("Treat spill as protection");
     await expect(page.locator(".aggregation-cause-callout")).toContainText("Distinct group keys grow partial state in RAM");
     await expect(page.locator(".aggregation-cost-callout")).toContainText("Spill completes with extra I/O");
@@ -278,7 +278,7 @@ test.describe("ClickHouse operational world", () => {
     await page.getByRole("button", { name: "Scenario Steady" }).click();
     await page.getByRole("menuitemradio", { name: /Replica queue falls behind/ }).click();
     const inspector = page.getByRole("complementary", { name: "ClickHouse mechanism inspector" });
-    await expect(inspector).toContainText("system.replication_queue");
+    await expect(inspector).toContainText("Replica queue falls behind");
     await expect(inspector.locator(".scenario-recommendation")).toContainText("queue depth and oldest-task age together");
     await expect(page.locator(".replica-cause-callout")).toContainText("Queue work arrives faster");
     await expect(page.locator(".replica-diagnosis-callout")).toContainText("task type, oldest age, retries, and exceptions");
@@ -337,7 +337,7 @@ test.describe("ClickHouse operational world", () => {
     await page.getByRole("button", { name: "Scenario Steady" }).click();
     await page.getByRole("menuitemradio", { name: /Keeper quorum unavailable/ }).click();
     const inspector = page.getByRole("complementary", { name: "ClickHouse mechanism inspector" });
-    await expect(inspector).toContainText("ClickHouse Keeper");
+    await expect(inspector).toContainText("Keeper quorum unavailable");
     await expect(inspector.locator(".scenario-recommendation")).toContainText("independent failure domains");
     await expect(page.locator(".keeper-cause-callout")).toContainText("not the same as a writable majority");
     await expect(page.locator(".keeper-recovery-callout")).toContainText("three voters in independent failure domains");
