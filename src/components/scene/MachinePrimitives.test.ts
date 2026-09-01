@@ -21,6 +21,7 @@ import {
   familyCanopyVisibleFormCount,
   foundryCraneFrame,
   foundryMergeFrame,
+  foundryPartLifecycle,
   keeperQuorumFrame,
   motionLoop,
   motionStage,
@@ -130,6 +131,19 @@ describe("MergeTree merge choreography", () => {
       inactiveSourceOpacity: 0.72,
       removalProgress: 0,
     });
+  });
+
+  it("keeps removal readable through the next idle interval and resets at feed", () => {
+    const retiring = foundryMergeFrame(11.35);
+    expect(foundryPartLifecycle(retiring)).toBe("removed");
+
+    const nextWaiting = foundryMergeFrame(12);
+    expect(nextWaiting.stage).toBe("waiting");
+    expect(foundryPartLifecycle(nextWaiting, "removed")).toBe("removed");
+
+    const nextFeed = foundryMergeFrame(19.4);
+    expect(nextFeed.stage).toBe("feed");
+    expect(foundryPartLifecycle(nextFeed, "removed")).toBe("active");
   });
 });
 

@@ -121,6 +121,23 @@ export type FoundryMergeFrame = {
   removalProgress: number;
 };
 
+export type FoundryPartLifecycle = "active" | "inactive" | "removed";
+
+/**
+ * Keep a completed retirement readable during the next idle crane interval.
+ * The status resets only when a new pair starts feeding the merge worker,
+ * rather than flashing back to `active` at the exact loop boundary.
+ */
+export function foundryPartLifecycle(
+  frame: FoundryMergeFrame,
+  previous: FoundryPartLifecycle | "" = "",
+): FoundryPartLifecycle {
+  if (frame.removalProgress > 0.55) return "removed";
+  if (previous === "removed" && frame.stage === "waiting") return "removed";
+  if (frame.inactiveSourceOpacity > 0.05) return "inactive";
+  return "active";
+}
+
 export type ReplacingReadStage = "observe" | "evaluate" | "resolve" | "emit";
 
 export type ReplacingReadFrame = {

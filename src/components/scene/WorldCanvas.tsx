@@ -20,6 +20,8 @@ import {
   DataCassette,
   foundryCraneFrame,
   foundryMergeFrame,
+  foundryPartLifecycle,
+  type FoundryPartLifecycle,
   InstrumentGauge,
   keeperQuorumFrame,
   partitionExplosionFrame,
@@ -494,7 +496,7 @@ function SortedMergeLoom({ pressure }: { pressure: boolean }) {
   const status = useRef<HTMLSpanElement>(null);
   const lifecycleStatus = useRef<HTMLSpanElement>(null);
   const previousStage = useRef("");
-  const previousLifecycle = useRef("");
+  const previousLifecycle = useRef<FoundryPartLifecycle | "">("");
   const getTime = useMachineTime();
   const reducedMotion = useAtlasStore((state) => state.reducedMotion);
   const helper = useRef(new THREE.Object3D());
@@ -572,11 +574,7 @@ function SortedMergeLoom({ pressure }: { pressure: boolean }) {
     };
     updateRetiredPart(retiredSourceA.current, -1.03, 0);
     updateRetiredPart(retiredSourceB.current, 1.03, 0.12);
-    const lifecycle = frame.removalProgress > 0.55
-      ? "removed"
-      : frame.inactiveSourceOpacity > 0.05
-        ? "inactive"
-        : "active";
+    const lifecycle = foundryPartLifecycle(frame, previousLifecycle.current);
     if (previousLifecycle.current !== lifecycle || lifecycleStatus.current?.dataset.state !== lifecycle) {
       previousLifecycle.current = lifecycle;
       document.documentElement.dataset.partLifecycle = lifecycle;
