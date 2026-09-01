@@ -155,7 +155,7 @@ test.describe("ClickHouse operational world", () => {
     await expect(page.locator(".world-canvas").getByText("MODELED SHARED CAPACITY · NOT SERVER COUNT", { exact: true })).toBeVisible();
     await expect(page.locator(".world-canvas").getByText("MODELED A · TTL REWRITE", { exact: true })).toBeVisible();
     await expect(page.locator(".world-canvas").getByText("MODELED B · MUTATION", { exact: true })).toBeVisible();
-    await expect(page.locator(".world-canvas").getByText("TTL QUEUE", { exact: true })).toBeVisible();
+    await expect(page.locator(".world-canvas").getByText("TTL REWRITE QUEUE", { exact: true })).toBeVisible();
     await page.waitForFunction(() => document.documentElement.dataset.contentionPhase === "saturate", undefined, { timeout: 8_000 });
     await captureReview(page, "artifacts/review/background-contention-saturated-v2.png");
     await page.waitForFunction(() => document.documentElement.dataset.contentionPhase === "backlog", undefined, { timeout: 6_000 });
