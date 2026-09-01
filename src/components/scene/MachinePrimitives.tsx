@@ -63,6 +63,19 @@ export function recommendationGotchaVisual(
   return null;
 }
 
+export type ClusterTopologyMode = "replicated-single-shard" | "replicated-shards" | "system";
+
+/**
+ * Architecture recommendations must not show the same topology for "add a
+ * replica" and "split the dataset". The renderer consumes this semantic mode
+ * so the visible node count and data routes stay aligned with the advisor.
+ */
+export function clusterTopologyMode(selectedMechanismId: MechanismId): ClusterTopologyMode {
+  if (selectedMechanismId === "architecture.replication") return "replicated-single-shard";
+  if (selectedMechanismId === "architecture.sharding") return "replicated-shards";
+  return "system";
+}
+
 export type FamilyCanopyDensity = {
   semanticForms: number;
   supportingForms: number;

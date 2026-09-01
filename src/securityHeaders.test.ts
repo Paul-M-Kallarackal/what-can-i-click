@@ -20,6 +20,6 @@ describe("public deployment security headers", () => {
     expect(headers).toContain("X-Content-Type-Options: nosniff");
     expect(headers).toContain("X-Frame-Options: DENY");
     expect(headers).toContain("Referrer-Policy: strict-origin-when-cross-origin");
-    expect(headers).toContain("Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=()");
+    expect(headers).toContain("Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=()");
   });
 });

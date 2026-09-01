@@ -46,7 +46,7 @@ export default function App() {
       <a className="skip-link" href="#machine-controls">Skip to simulation controls</a>
       <WorldCanvas />
       <header className="topbar">
-        <div className="mini-brand"><img aria-hidden="true" alt="" className="brand-mark" src="/brand/what-should-i-click-mark-v4-256.png" /><span><strong>What can I <em>Click</em></strong><small>ClickHouse gotchas, made visible</small></span></div>
+        <div className="mini-brand"><img aria-hidden="true" alt="" className="brand-mark" src="/brand/what-can-i-click-tree-logo-512.png" /><span><strong>What can I <em>Click</em></strong><small>ClickHouse gotchas, made visible</small></span></div>
         <nav aria-label="ClickHouse foundry utilities">
           <div className="webmcp-status" title="WebMCP tools register when the browser supports document.modelContext"><i /><span>WebMCP</span></div>
           <button className="icon-button" type="button" onClick={() => useAtlasStore.getState().setAboutOpen(true)} aria-label="About this project"><Info size={17} /></button>

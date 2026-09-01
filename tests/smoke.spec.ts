@@ -45,6 +45,23 @@ test("an in-browser WebMCP agent can stage a bounded architecture path", async (
   await expect(recommendation.getByRole("heading", { name: "Product analytics baseline" })).toBeVisible();
   await expect(recommendation).toContainText(result.decisions[0]!.title);
   await expect(recommendation.getByText("extreme ingest", { exact: true })).toBeVisible();
+
+  const shardingStepIndex = result.decisions.findIndex((entry) => entry.mechanismId === "architecture.sharding");
+  expect(shardingStepIndex).toBeGreaterThanOrEqual(0);
+  await recommendation.getByRole("navigation", { name: "Recommendation steps" }).getByRole("button").nth(shardingStepIndex).click();
+  await expect(page.locator('.cluster-topology-contract[data-topology="replicated-shards"]')).toContainText("Two shards · two replicas each");
+
+  const replicationResult = await page.evaluate(async () => {
+    const tools = (window as unknown as { __atlasTools: Array<{ name: string; execute: (input: Record<string, unknown>) => Promise<unknown> }> }).__atlasTools;
+    return tools.find((tool) => tool.name === "recommend_clickhouse_architecture")!.execute({
+      workload: "general", ingestRate: "high", latencyTarget: "seconds", retention: "months",
+      updates: "append-only", availability: "high", topology: "single-region", costPriority: "balanced",
+    });
+  }) as { decisions: Array<{ mechanismId: string; title: string }> };
+  const replicationStepIndex = replicationResult.decisions.findIndex((entry) => entry.mechanismId === "architecture.replication");
+  expect(replicationStepIndex).toBeGreaterThanOrEqual(0);
+  await recommendation.getByRole("navigation", { name: "Recommendation steps" }).getByRole("button").nth(replicationStepIndex).click();
+  await expect(page.locator('.cluster-topology-contract[data-topology="replicated-single-shard"]')).toContainText("One shard · same rows on two replicas");
 });
 
 test("materialized views and projections keep different visible contracts", async ({ page }) => {
@@ -223,6 +240,7 @@ test("keeps the manual world stable and hands personalization to WebMCP", async 
   await page.goto("/", { waitUntil: "domcontentloaded" });
   await expect(page.getByLabel("Stable architecture walkthrough")).toContainText("Fit ClickHouse to my workload");
   await expect(page.getByRole("menu", { name: "ClickHouse operational scenarios" })).toHaveCount(0);
+  await expect(page.locator("html")).toHaveAttribute("data-merge-tree-landmark", "visible");
   await expect(page.locator(".merge-tree-monument-label")).toHaveCount(0);
   await expect(page.getByRole("region", { name: "ClickHouse model telemetry" })).toContainText("Healthy");
 });

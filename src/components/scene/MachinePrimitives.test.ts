@@ -17,6 +17,7 @@ import {
   badOrderingFrame,
   coalescingReadFrame,
   collapsingHistoryFrame,
+  clusterTopologyMode,
   FAMILY_CANOPY_DENSITY,
   familyCanopyVisibleFormCount,
   foundryCraneFrame,
@@ -608,5 +609,13 @@ describe("agent-only gotcha visual routing", () => {
     expect(recommendationGotchaVisual("read.ordering", false)).toBeNull();
     expect(recommendationGotchaVisual("memory.external-spill", false)).toBeNull();
     expect(recommendationGotchaVisual("retention.ttl-delete", true)).toBeNull();
+  });
+});
+
+describe("architecture topology routing", () => {
+  it("keeps replication and sharding visually distinct", () => {
+    expect(clusterTopologyMode("architecture.replication")).toBe("replicated-single-shard");
+    expect(clusterTopologyMode("architecture.sharding")).toBe("replicated-shards");
+    expect(clusterTopologyMode("architecture.keeper")).toBe("system");
   });
 });

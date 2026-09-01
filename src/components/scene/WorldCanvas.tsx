@@ -15,6 +15,7 @@ import {
   badOrderingFrame,
   coalescingReadFrame,
   collapsingHistoryFrame,
+  clusterTopologyMode,
   COLORS,
   DataBars,
   DataCassette,
@@ -1900,29 +1901,59 @@ function ClusterSwitchboard({ id, pressure }: { id: MechanismId; pressure: boole
   const failure = id === "architecture.failure" || pressure;
   const recovery = id === "architecture.recovery";
   const keeperActive = id === "architecture.keeper";
+  const topology = clusterTopologyMode(id);
+  const singleShard = topology === "replicated-single-shard";
+  const topologyNodes = singleShard
+    ? [
+        { shardIndex: 0, replicaIndex: 0, x: -0.82, z: -0.72 },
+        { shardIndex: 0, replicaIndex: 1, x: 0.82, z: 0.72 },
+      ]
+    : [-1, 1].flatMap((shardZ, shardIndex) => [-0.65, 0.65].map((replicaX, replicaIndex) => ({
+        shardIndex,
+        replicaIndex,
+        x: replicaX,
+        z: shardZ * 1.25,
+      })));
   return (
     <group position={[0.2, 0.55, 0]}>
       <MachinePlate position={[0, 0.15, 0]} size={[9.3, 0.22, 4.55]} color="#D5D6D3" />
-      <group ref={query} position={[-3.85, 1.05, 0]}><MachineValue position={[0, 0, 0]} value="query" detail="scatter" color={COLORS.yellow} /></group>
-      <Line points={[[ -3.25, .82, 0], [-1.65, 1, -1.2]]} color={COLORS.yellow} lineWidth={5} />
-      <Line points={[[ -3.25, .82, 0], [-1.65, 1, 1.2]]} color={COLORS.yellow} lineWidth={5} />
-      {[-1, 1].flatMap((shardZ, shardIndex) => [-0.65, 0.65].map((replicaX, replicaIndex) => {
+      <group ref={query} position={[-3.85, 1.05, 0]}><MachineValue position={[0, 0, 0]} value={singleShard ? "row" : "query"} detail={singleShard ? "one shard" : "scatter"} color={COLORS.yellow} /></group>
+      {singleShard ? (
+        <>
+          <Line points={[[ -3.25, .82, 0], [-1.52, 1, -0.72]]} color={COLORS.yellow} lineWidth={5} />
+          <Line points={[[ -0.18, 1, -0.72], [0.18, 1, 0.72]]} color={COLORS.cyan} lineWidth={5} dashed dashSize={0.18} gapSize={0.09} />
+          <Line points={[[1.38, 1, 0.72], [3.35, .82, 0]]} color={COLORS.cyan} lineWidth={5} />
+        </>
+      ) : (
+        <>
+          <Line points={[[ -3.25, .82, 0], [-1.65, 1, -1.2]]} color={COLORS.yellow} lineWidth={5} />
+          <Line points={[[ -3.25, .82, 0], [-1.65, 1, 1.2]]} color={COLORS.yellow} lineWidth={5} />
+          <Line points={[[1.3, 1, -1.2], [3.35, .82, 0]]} color={COLORS.cyan} lineWidth={5} />
+          <Line points={[[1.3, 1, 1.2], [3.35, .82, 0]]} color="#A48AE3" lineWidth={5} />
+        </>
+      )}
+      {topologyNodes.map(({ shardIndex, replicaIndex, x, z }) => {
         const broken = failure && shardIndex === 0 && replicaIndex === 1;
         const color = broken ? COLORS.pressure : recovery && shardIndex === 0 ? COLORS.yellow : shardIndex === 0 ? COLORS.cyan : "#A48AE3";
-        return <group key={`${shardIndex}-${replicaIndex}`} position={[replicaX, 1.25, shardZ * 1.25]}>
+        return <group key={`${shardIndex}-${replicaIndex}`} position={[x, 1.25, z]}>
           <RoundedBox args={[1.05, 2.3, 1.25]} radius={0.13} smoothness={3} castShadow><meshStandardMaterial color={color} emissive={color} emissiveIntensity={broken ? 0.24 : 0.08} transparent={broken} opacity={broken ? 0.36 : 1} roughness={0.34} metalness={0.28} /></RoundedBox>
           <DataBars count={10} spread={[0.66, 1.15, 0.66]} offset={[0, -0.45, 0]} color="#15171A" />
           <Html pointerEvents="none" center position={[0, 1.6, 0]} distanceFactor={9}><span className="machine-stage-label">S{shardIndex + 1} · R{replicaIndex + 1}</span></Html>
         </group>;
-      }))}
-      <Line points={[[1.3, 1, -1.2], [3.35, .82, 0]]} color={COLORS.cyan} lineWidth={5} />
-      <Line points={[[1.3, 1, 1.2], [3.35, .82, 0]]} color="#A48AE3" lineWidth={5} />
-      <MachineValue position={[3.55, 1.05, 0]} value="result" detail="gather" color={COLORS.yellow} />
+      })}
+      <MachineValue position={[3.55, 1.05, 0]} value={singleShard ? "read" : "result"} detail={singleShard ? "either replica" : "gather"} color={COLORS.yellow} />
       <group position={[0, 3.65, 0]}>
         {[-1.25, 0, 1.25].map((x, index) => <group key={x} position={[x, 0, 0]}><mesh castShadow><cylinderGeometry args={[0.48, 0.48, 0.92, 18]} /><meshStandardMaterial color={keeperActive ? "#15171A" : "#737875"} roughness={0.3} metalness={0.52} /></mesh><mesh position={[0, 0.52, 0]}><sphereGeometry args={[0.16, 14, 10]} /><meshStandardMaterial color={index === 1 ? COLORS.yellow : COLORS.cyan} emissive={index === 1 ? COLORS.yellow : COLORS.cyan} emissiveIntensity={0.35} /></mesh></group>)}
         <Line points={[[-1.25, .15, 0], [0, .15, 0], [1.25, .15, 0]]} color={COLORS.cyan} lineWidth={2} dashed dashSize={0.12} gapSize={0.08} />
         <Html pointerEvents="none" center position={[0, 1.18, 0]} distanceFactor={9}><span className="keeper-stage-label">KEEPER QUORUM · METADATA ONLY</span></Html>
       </group>
+      <Html pointerEvents="none" center position={[0, 0.62, 2.72]} distanceFactor={10}>
+        <div className="cluster-topology-contract" data-topology={topology}>
+          <span>{singleShard ? "REPLICATION" : topology === "replicated-shards" ? "SHARDING + REPLICATION" : "DISTRIBUTED TOPOLOGY"}</span>
+          <strong>{singleShard ? "One shard · same rows on two replicas" : "Two shards · two replicas each"}</strong>
+          <small>{singleShard ? "Availability copies data; it does not split the dataset." : "A shard key splits rows; replicas copy each shard."}</small>
+        </div>
+      </Html>
       <MechanismTitle id={id} eyebrow="CLUSTER SWITCHBOARD" />
     </group>
   );
@@ -3541,6 +3572,146 @@ function BlockFoundryMachine({ exploded, mobile, pressure, scenario }: { explode
   );
 }
 
+type VoxelNode = {
+  position: [number, number, number];
+  scale: [number, number, number];
+  rotation?: [number, number, number];
+};
+
+type CanopyVoxelNode = VoxelNode & { shade: number };
+
+const MERGE_TREE_TRUNK_VOXELS: VoxelNode[] = [
+  { position: [0, 0.42, 0], scale: [1.45, 0.72, 1.2] },
+  { position: [-0.68, 0.28, 0.06], scale: [0.7, 0.4, 0.72], rotation: [0, 0, -0.08] },
+  { position: [0.74, 0.3, -0.05], scale: [0.78, 0.42, 0.7], rotation: [0, 0, 0.08] },
+  { position: [-1.28, 0.18, 0.08], scale: [0.72, 0.3, 0.58], rotation: [0, 0, -0.13] },
+  { position: [1.36, 0.18, -0.08], scale: [0.78, 0.3, 0.58], rotation: [0, 0, 0.13] },
+  { position: [-0.12, 1.12, 0], scale: [1.08, 0.92, 1.04] },
+  { position: [0.08, 1.88, -0.02], scale: [0.98, 0.88, 0.98] },
+  { position: [-0.16, 2.62, 0.02], scale: [0.92, 0.82, 0.9] },
+  { position: [0.1, 3.3, 0], scale: [0.84, 0.72, 0.84] },
+  { position: [-0.52, 3.7, 0], scale: [0.72, 0.62, 0.72], rotation: [0, 0, -0.14] },
+  { position: [0.58, 3.72, -0.04], scale: [0.72, 0.62, 0.72], rotation: [0, 0, 0.14] },
+  { position: [-1.12, 4.04, 0.02], scale: [0.82, 0.58, 0.68], rotation: [0, 0, -0.22] },
+  { position: [1.18, 4.08, -0.05], scale: [0.84, 0.58, 0.68], rotation: [0, 0, 0.22] },
+  { position: [-1.78, 4.38, 0.02], scale: [0.8, 0.54, 0.64], rotation: [0, 0, -0.28] },
+  { position: [1.86, 4.4, -0.06], scale: [0.82, 0.54, 0.64], rotation: [0, 0, 0.28] },
+  { position: [-0.2, 4.28, -0.08], scale: [0.72, 0.74, 0.7] },
+  { position: [-0.72, 4.72, -0.1], scale: [0.64, 0.58, 0.62], rotation: [0, 0, -0.18] },
+  { position: [0.48, 4.74, -0.12], scale: [0.66, 0.58, 0.62], rotation: [0, 0, 0.18] },
+];
+
+const MERGE_TREE_CANOPY_CLUSTERS = [
+  [-2.55, 5.18, 0.18, 1.02],
+  [-1.68, 5.82, -0.14, 1.12],
+  [-0.52, 6.28, 0.06, 1.18],
+  [0.76, 6.22, -0.18, 1.16],
+  [1.86, 5.76, 0.12, 1.1],
+  [2.7, 5.14, -0.08, 0.98],
+  [-0.55, 5.18, 0.72, 1.08],
+  [0.78, 5.08, -0.76, 1.04],
+] as const;
+
+const MERGE_TREE_CANOPY_OFFSETS = [
+  [0, 0, 0, 0.94],
+  [-0.7, 0.08, 0.04, 0.72],
+  [0.68, 0.14, -0.08, 0.76],
+  [-0.24, 0.58, 0.08, 0.7],
+  [0.3, -0.55, -0.02, 0.66],
+  [-0.12, 0.12, 0.62, 0.64],
+  [0.18, 0.02, -0.66, 0.62],
+  [-0.58, -0.38, 0.32, 0.56],
+  [0.58, 0.42, -0.28, 0.54],
+] as const;
+
+const MERGE_TREE_CANOPY_VOXELS: CanopyVoxelNode[] = MERGE_TREE_CANOPY_CLUSTERS.flatMap(
+  ([clusterX, clusterY, clusterZ, clusterScale], clusterIndex) => MERGE_TREE_CANOPY_OFFSETS.map(
+    ([offsetX, offsetY, offsetZ, size], offsetIndex) => ({
+      position: [
+        clusterX + offsetX * clusterScale,
+        clusterY + offsetY * clusterScale,
+        clusterZ + offsetZ * clusterScale,
+      ] as [number, number, number],
+      scale: [
+        size * clusterScale * (offsetIndex % 3 === 0 ? 1.12 : 1),
+        size * clusterScale,
+        size * clusterScale * (offsetIndex % 2 === 0 ? 1.06 : 0.94),
+      ] as [number, number, number],
+      rotation: [0, ((clusterIndex + offsetIndex) % 5 - 2) * 0.055, 0] as [number, number, number],
+      shade: (clusterIndex + offsetIndex * 2) % 4,
+    }),
+  ),
+);
+
+const MERGE_TREE_ROUTE_POINTS: Array<[number, number, number]> = [
+  [0.02, 0.2, 0.67],
+  [0.02, 1.02, 0.67],
+  [-0.32, 1.02, 0.67],
+  [-0.32, 1.86, 0.67],
+  [0.18, 1.86, 0.67],
+  [0.18, 2.76, 0.67],
+  [-0.26, 2.76, 0.67],
+  [-0.26, 3.62, 0.67],
+  [0.18, 3.62, 0.67],
+  [0.18, 4.5, 0.67],
+  [0.8, 4.5, 0.67],
+  [0.8, 5.52, 0.67],
+];
+
+function MergeTreeDataPulse() {
+  const pulse = useRef<THREE.Mesh>(null);
+  const getTime = useMachineTime();
+  const reducedMotion = useAtlasStore((state) => state.reducedMotion);
+  useFrame(() => {
+    if (!pulse.current) return;
+    const routeProgress = reducedMotion ? MERGE_TREE_ROUTE_POINTS.length - 1 : (getTime() * 0.82) % (MERGE_TREE_ROUTE_POINTS.length - 1);
+    const segment = Math.min(MERGE_TREE_ROUTE_POINTS.length - 2, Math.floor(routeProgress));
+    const localProgress = reducedMotion ? 1 : routeProgress - segment;
+    const from = MERGE_TREE_ROUTE_POINTS[segment]!;
+    const to = MERGE_TREE_ROUTE_POINTS[segment + 1]!;
+    pulse.current.position.set(
+      THREE.MathUtils.lerp(from[0], to[0], localProgress),
+      THREE.MathUtils.lerp(from[1], to[1], localProgress),
+      THREE.MathUtils.lerp(from[2], to[2], localProgress),
+    );
+    pulse.current.scale.setScalar(reducedMotion ? 0.17 : 0.14 + Math.sin(getTime() * 4.4) * 0.025);
+  });
+  return <mesh ref={pulse}><boxGeometry args={[1, 1, 1]} /><meshStandardMaterial color="#20D7FF" emissive="#20D7FF" emissiveIntensity={0.85} roughness={0.22} /></mesh>;
+}
+
+/**
+ * A branded spatial landmark, not a storage metaphor. It deliberately sits
+ * behind the causal foundry so the crane, immutable parts, and merge worker
+ * remain the objects that explain MergeTree behavior.
+ */
+function MergeTreeVoxelLandmark({ mobile }: { mobile: boolean }) {
+  useEffect(() => {
+    document.documentElement.dataset.mergeTreeLandmark = "visible";
+    return () => { delete document.documentElement.dataset.mergeTreeLandmark; };
+  }, []);
+  const canopyColors = ["#FFCC01", "#F4B900", "#E2A000", "#FFD84A"];
+  return (
+    <group position={[2.15, 0.02, -5.45]} scale={mobile ? 0.66 : 0.78} rotation={[0, -0.08, 0]}>
+      <Instances limit={MERGE_TREE_TRUNK_VOXELS.length} range={MERGE_TREE_TRUNK_VOXELS.length} castShadow>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="#15171A" roughness={0.38} metalness={0.3} />
+        {MERGE_TREE_TRUNK_VOXELS.map((node, index) => <Instance key={index} position={node.position} scale={node.scale} rotation={node.rotation ?? [0, 0, 0]} />)}
+      </Instances>
+      {canopyColors.map((color, shade) => {
+        const nodes = MERGE_TREE_CANOPY_VOXELS.filter((node) => node.shade === shade);
+        return <Instances key={color} limit={nodes.length} range={nodes.length} castShadow>
+          <boxGeometry args={[1, 1, 1]} />
+          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.035} roughness={0.44} metalness={0.05} />
+          {nodes.map((node, index) => <Instance key={index} position={node.position} scale={node.scale} rotation={node.rotation ?? [0, 0, 0]} />)}
+        </Instances>;
+      })}
+      <Line points={MERGE_TREE_ROUTE_POINTS} color="#073B45" lineWidth={8} />
+      <Line points={MERGE_TREE_ROUTE_POINTS} color="#20D7FF" lineWidth={4} />
+      <MergeTreeDataPulse />
+    </group>
+  );
+}
+
 function MergeTreeFoundry({ mobile }: { mobile: boolean }) {
   const viewLevel = useAtlasStore((state) => state.viewLevel);
   const selected = useAtlasStore((state) => state.selectedMechanismId);
@@ -3553,6 +3724,7 @@ function MergeTreeFoundry({ mobile }: { mobile: boolean }) {
   const recommendationVisual = recommendationGotchaVisual(selected, recommendationOpen);
   const pressure = scenario !== "healthy" || selected === "mergetree.parts-pressure" || selected === "mergetree.forced-merge";
   const district = selected ? mechanismById(selected)?.districtId : null;
+  const showMergeTreeLandmark = scenario === "healthy" && mergeVisual === "family" && (!selected || district === "mergetree");
   const activeMachine = scenario === "merge-ttl-contention"
     ? <BackgroundContentionVisualization />
     : scenario === "bad-order-by"
@@ -3604,6 +3776,7 @@ function MergeTreeFoundry({ mobile }: { mobile: boolean }) {
       <mesh position={[0, -0.1, 0]} receiveShadow><cylinderGeometry args={[8.9, 9.15, 0.18, 64]} /><meshStandardMaterial color="#FFFFFF" roughness={0.72} /></mesh>
       <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}><ringGeometry args={[6.7, 6.76, 64]} /><meshBasicMaterial color={pressure ? COLORS.pressure : COLORS.yellow} transparent opacity={0.68} /></mesh>
       <FloorInstrumentation pressure={pressure} />
+      {showMergeTreeLandmark && <MergeTreeVoxelLandmark mobile={mobile} />}
       {activeMachine}
     </group>
   );

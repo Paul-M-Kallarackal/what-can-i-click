@@ -153,7 +153,14 @@ test.describe("responsive and interaction stress", () => {
     expect(partitionStepIndex).toBeGreaterThanOrEqual(0);
     await progress.getByRole("button").nth(partitionStepIndex).click();
     await expect(page.locator(".partition-boundary-label")).toContainText("PARTS NEVER MERGE ACROSS IT");
-    await slider.press("End");
+    const sliderBounds = await slider.boundingBox();
+    expect(sliderBounds).not.toBeNull();
+    const startX = sliderBounds!.x + (partitionStepIndex / (stepCount - 1)) * sliderBounds!.width;
+    const y = sliderBounds!.y + sliderBounds!.height / 2;
+    await page.mouse.move(startX, y);
+    await page.mouse.down();
+    await page.mouse.move(sliderBounds!.x + sliderBounds!.width - 2, y, { steps: 12 });
+    await page.mouse.up();
     await expect(progress.getByRole("button").last()).toHaveAttribute("data-active", "true");
     await expect(page.locator(".inspector-shell")).toHaveCount(0);
     await expect(guide.getByRole("button", { name: "Play the architecture", exact: true })).toBeVisible();

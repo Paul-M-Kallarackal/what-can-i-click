@@ -75,10 +75,11 @@ test.describe("ClickHouse operational world", () => {
     await captureReview(page, "artifacts/review/parts-bin-v1.png");
   });
 
-  test("keeps the stable foundry free of the tree landmark and pressure controls", async ({ page }) => {
+  test("keeps the branded tree behind the stable foundry without pressure controls", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 720 });
     await page.goto("/", { waitUntil: "domcontentloaded" });
 
+    await expect(page.locator("html")).toHaveAttribute("data-merge-tree-landmark", "visible");
     await expect(page.locator(".merge-tree-monument-label")).toHaveCount(0);
     await expect(page.getByRole("menu", { name: "ClickHouse operational scenarios" })).toHaveCount(0);
     await expect(page.getByLabel("Stable architecture walkthrough")).toContainText("Fit ClickHouse to my workload");
