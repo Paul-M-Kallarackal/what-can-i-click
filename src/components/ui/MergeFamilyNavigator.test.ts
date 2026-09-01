@@ -66,7 +66,8 @@ describe("agent-selected MergeTree family workbench", () => {
 
     expect(useAtlasStore.getState()).toMatchObject({ mergeFamilyId: "merge", latestReadStrategy: "background" });
     expect(container.querySelector(".family-workbench")?.getAttribute("aria-label")).toBe("MergeTree workbench");
-    expect(container.textContent).toContain("Steady ClickHouse");
+    expect(container.textContent).toContain("Healthy MergeTree flow");
+    expect(container.textContent).toContain("What you are seeing");
   });
 
   it("shows both bounded read contracts only after the agent requests their comparison", async () => {

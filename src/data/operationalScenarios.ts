@@ -34,12 +34,12 @@ const steady: OperationalSnapshot = {
 export const OPERATIONAL_SCENARIOS: OperationalScenario[] = [
   {
     id: "healthy",
-    title: "Steady ClickHouse",
-    shortTitle: "Steady",
+    title: "Healthy MergeTree flow",
+    shortTitle: "Healthy",
     description: "Batched inserts, bounded background work, selective reads, and replicas keeping pace.",
     lesson: "Batched inserts and background merges remain in balance.",
-    setting: "workload",
-    settingValue: "balanced",
+    setting: "assumption",
+    settingValue: "balanced workload",
     primaryMechanismId: null,
     affectedMechanismIds: [],
     target: steady,

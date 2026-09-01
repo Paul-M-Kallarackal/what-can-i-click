@@ -78,8 +78,8 @@ Deterministic advisor ─── evidence registry
       ▼
 Zustand application state ─── WebMCP tools
       │
-      ├── React scenario card, agent journey, and mechanism inspector
-      └── renderer-independent simulation clock ─── 3D foundry + pressure visualizations
+      ├── React healthy-baseline card, agent journey, and mechanism inspector
+      └── renderer-independent simulation clock ─── stable 3D foundry walkthrough
 ```
 
 The mechanism registry is the shared source of truth for WebMCP focus, inspector content, accessible narration, and 3D placement. Simulation truth stays outside React Three Fiber; the renderer interpolates reviewed semantic states.

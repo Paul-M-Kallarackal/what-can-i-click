@@ -104,7 +104,7 @@ export function MergeFamilyNavigator() {
             </article>
           ) : (
             <article className="merge-scenario-card" data-pressure={!healthy}>
-              <header><span>{healthy ? <CheckCircle2 size={18} /> : <TriangleAlert size={18} />}<small>Current scenario</small></span><strong>{scenario.title}</strong></header>
+              <header><span>{healthy ? <CheckCircle2 size={18} /> : <TriangleAlert size={18} />}<small>{healthy ? "What you are seeing" : "Failure mode"}</small></span><strong>{scenario.title}</strong></header>
               <p>{scenario.description}</p>
               {!healthy && <div className="merge-scenario-advice"><span>Avoid it</span><p>{scenario.lesson}</p></div>}
               <footer><span>{scenario.setting}</span><strong>{scenario.settingValue}</strong><a href={family.source} target="_blank" rel="noreferrer" aria-label="Read the official MergeTree documentation">Official docs <ArrowUpRight size={14} /></a></footer>

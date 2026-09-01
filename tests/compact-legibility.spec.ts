@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("keeps the single MergeTree scenario card readable at compact desktop heights", async ({ page }) => {
+test("keeps the healthy MergeTree baseline readable at compact desktop heights", async ({ page }) => {
   test.setTimeout(60_000);
 
   for (const height of [720, 650, 600]) {
@@ -8,10 +8,11 @@ test("keeps the single MergeTree scenario card readable at compact desktop heigh
     await page.goto("/", { waitUntil: "domcontentloaded" });
 
     const workbench = page.getByRole("complementary", { name: "MergeTree workbench" });
-    const scenario = workbench.locator(".merge-scenario-card");
+    const baseline = workbench.locator(".merge-scenario-card");
     await expect(workbench).toBeVisible();
     await expect(workbench.getByRole("heading", { name: "MergeTree" })).toBeVisible();
-    await expect(scenario).toContainText("Steady ClickHouse");
+    await expect(baseline).toContainText("Healthy MergeTree flow");
+    await expect(baseline).toContainText("What you are seeing");
     await expect(page.getByLabel("Stable architecture walkthrough")).toContainText("Fit ClickHouse to my workload");
     await expect(page.getByRole("textbox", { name: "Search mechanisms and evidence" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /10 use cases/ })).toHaveCount(0);
@@ -38,13 +39,13 @@ test("keeps the single MergeTree scenario card readable at compact desktop heigh
   }
 });
 
-test("keeps the mobile MergeTree scenario readable without telemetry collision", async ({ page }) => {
+test("keeps the mobile MergeTree baseline readable without telemetry collision", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/", { waitUntil: "domcontentloaded" });
 
   const workbench = page.getByRole("complementary", { name: "MergeTree workbench" });
-  const scenario = workbench.locator(".merge-scenario-card");
-  await expect(scenario).toContainText("Steady ClickHouse");
+  const baseline = workbench.locator(".merge-scenario-card");
+  await expect(baseline).toContainText("Healthy MergeTree flow");
 
   const metrics = await workbench.evaluate((element) => {
     const size = (selector: string) => Number.parseFloat(getComputedStyle(element.querySelector(selector)!).fontSize);

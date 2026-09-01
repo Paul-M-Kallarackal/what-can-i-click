@@ -216,7 +216,7 @@ test("keeps the manual world stable and hands personalization to WebMCP", async 
   await expect(page.getByLabel("Stable architecture walkthrough")).toContainText("Fit ClickHouse to my workload");
   await expect(page.getByRole("menu", { name: "ClickHouse operational scenarios" })).toHaveCount(0);
   await expect(page.locator(".merge-tree-monument-label")).toHaveCount(0);
-  await expect(page.getByRole("region", { name: "ClickHouse model telemetry" })).toContainText("Steady");
+  await expect(page.getByRole("region", { name: "ClickHouse model telemetry" })).toContainText("Healthy");
 });
 
 test("respects reduced motion", async ({ page }) => {
