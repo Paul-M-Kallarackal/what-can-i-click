@@ -5,7 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useLayoutEffect, use
 import * as THREE from "three";
 import { MECHANISMS } from "../../data/mechanisms";
 import { useAtlasStore } from "../../store/useAtlasStore";
-import type { DistrictId, DistrictSpec, LatestReadStrategy, MechanismId, MergeFamilyId } from "../../types";
+import type { DistrictId, DistrictSpec, LatestReadStrategy, MechanismId, MergeFamilyId, ViewLevel } from "../../types";
 
 export const COLORS = {
   mineral: "#D8D8D0",
@@ -19,6 +19,49 @@ export const COLORS = {
   glass: "#BFC8C8",
   cold: "#778E9B",
 };
+
+export type MergeTreeVisualMode =
+  | "family"
+  | "part-anatomy"
+  | "part-xray"
+  | "partition-boundary"
+  | "parts-pressure";
+
+/**
+ * WebMCP recommendations select mechanism IDs directly. Resolve those IDs to
+ * a dedicated scene before consulting the manually selected MergeTree family,
+ * so an earlier ReplacingMergeTree exploration cannot leak into a later base
+ * MergeTree recommendation.
+ */
+export function mergeTreeVisualMode(
+  selectedMechanismId: MechanismId | null,
+  viewLevel: ViewLevel,
+): MergeTreeVisualMode {
+  if (selectedMechanismId === "mergetree.part-anatomy") {
+    return viewLevel === "xray" ? "part-xray" : "part-anatomy";
+  }
+  if (selectedMechanismId === "mergetree.partition-boundary") return "partition-boundary";
+  if (selectedMechanismId === "mergetree.parts-pressure") return "parts-pressure";
+  return "family";
+}
+
+export type RecommendationGotchaVisual =
+  | "ordering"
+  | "aggregation-spill"
+  | "keeper-quorum"
+  | "replica-lag";
+
+export function recommendationGotchaVisual(
+  selectedMechanismId: MechanismId | null,
+  recommendationOpen: boolean,
+): RecommendationGotchaVisual | null {
+  if (!recommendationOpen) return null;
+  if (selectedMechanismId === "read.ordering") return "ordering";
+  if (selectedMechanismId === "memory.external-spill") return "aggregation-spill";
+  if (selectedMechanismId === "architecture.keeper") return "keeper-quorum";
+  if (selectedMechanismId === "observability.replication-queue") return "replica-lag";
+  return null;
+}
 
 export type FamilyCanopyDensity = {
   semanticForms: number;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { accelerationMechanism, recommendArchitecture, resolveAccelerationGoal, workloadProfileSchema } from "./advisor";
+import { accelerationMechanism, recommendArchitecture, recommendMergeFamily, resolveAccelerationGoal, workloadProfileSchema } from "./advisor";
 import { mechanismById } from "../data/mechanisms";
 import type { WorkloadProfile } from "../types";
 
@@ -53,6 +53,18 @@ describe("recommendArchitecture", () => {
     expect(result.decisions[0].title).toContain("Managed");
     expect(result.decisions.find((entry) => entry.mechanismId === "mergetree.part-lifecycle")?.recommendation).toContain("ReplacingMergeTree");
     expect(result.decisions.find((entry) => entry.mechanismId === "mergetree.parts-pressure")?.recommendation).toContain("managed connector");
+  });
+
+  it("chooses a MergeTree family from the bounded update contract instead of a canned use case", () => {
+    expect(recommendMergeFamily(base)).toMatchObject({ familyId: "merge", latestReadStrategy: "background" });
+    expect(recommendMergeFamily({ ...base, workload: "product-analytics", updates: "occasional" })).toMatchObject({
+      familyId: "replacing",
+      latestReadStrategy: "argmax",
+      reason: expect.stringContaining("reserve FINAL"),
+    });
+
+    const occasional = recommendArchitecture({ ...base, workload: "product-analytics", updates: "occasional" });
+    expect(occasional.decisions.find((entry) => entry.title === "Versioned replacement model")?.mechanismId).toBe("mergetree.part-lifecycle");
   });
 
   it("attaches a workload-specific decision to the tiny-part gotcha", () => {

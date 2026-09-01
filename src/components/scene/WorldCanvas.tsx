@@ -24,11 +24,13 @@ import {
   type FoundryPartLifecycle,
   InstrumentGauge,
   keeperQuorumFrame,
+  mergeTreeVisualMode,
   partitionExplosionFrame,
   precomputeSwitchyardFrame,
   type PrecomputeSwitchyardFrame,
   type PrecomputeVisualMode,
   replacingReadFrame,
+  recommendationGotchaVisual,
   replicaLagFrame,
   resetMachineRenderTime,
   setComposedMaterialBaseOpacity,
@@ -3384,6 +3386,100 @@ function BadOrderingVisualization() {
   );
 }
 
+function PartAnatomyVisualization({ xray }: { xray: boolean }) {
+  return (
+    <group position={[0, 0.55, 0]}>
+      <MachinePlate position={[0, 0.1, 0]} size={[9.4, 0.22, 5.35]} color="#D7D8D4" />
+      <group position={[0, 2.05, 0]} scale={xray ? 0.82 : 0.76}>
+        <ImmutablePart exploded />
+      </group>
+      <Html pointerEvents="none" center position={[0, 5.18, 0]} distanceFactor={9}>
+        <div className="mechanism-machine-title mechanism-machine-title--part">
+          <span>ONE IMMUTABLE MERGETREE PART</span>
+          <strong>Columns, marks, index, checksums, metadata</strong>
+          <small>These files commit together. A later merge writes a new part instead of editing this one.</small>
+        </div>
+      </Html>
+      <Html pointerEvents="none" center position={[0, -0.48, 2.2]} distanceFactor={10}>
+        <span className="part-anatomy-contract">INSERT BLOCK → SORTED COLUMN FILES → IMMUTABLE PART</span>
+      </Html>
+    </group>
+  );
+}
+
+function PartitionLane({
+  z,
+  label,
+  accent,
+  outputLabel,
+}: {
+  z: number;
+  label: string;
+  accent: string;
+  outputLabel: string;
+}) {
+  return (
+    <group position={[0, 0, z]}>
+      <RoundedBox args={[8.7, 0.16, 1.75]} radius={0.08} smoothness={3} position={[0, 0.23, 0]} receiveShadow>
+        <meshStandardMaterial color="#ECEDE9" roughness={0.62} metalness={0.04} />
+      </RoundedBox>
+      <Line points={[[ -3.75, 0.42, 0], [3.72, 0.42, 0]]} color={accent} lineWidth={4} />
+      {[-3.3, -2.05].map((x, index) => (
+        <group key={x} position={[x, 0.84, 0]} scale={0.72}>
+          <FoundryPartArtifact accent={accent} />
+          <Html pointerEvents="none" center position={[0, 0.82, 0]} distanceFactor={9}>
+            <span className="partition-part-index">{index === 0 ? "A" : "B"}</span>
+          </Html>
+        </group>
+      ))}
+      <Html pointerEvents="none" center position={[-2.66, 1.82, 0]} distanceFactor={9}>
+        <span className="partition-lane-label">PARTITION {label}</span>
+      </Html>
+      <group position={[0.15, 1.02, 0]}>
+        <RoundedBox args={[0.72, 1.72, 1.18]} radius={0.11} smoothness={3} castShadow>
+          <meshStandardMaterial color="#15171A" roughness={0.24} metalness={0.56} />
+        </RoundedBox>
+        <mesh position={[0.39, 0, 0]}>
+          <boxGeometry args={[0.1, 1.2, 0.72]} />
+          <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.34} />
+        </mesh>
+        <Html pointerEvents="none" center position={[0, 1.2, 0]} distanceFactor={9}>
+          <span className="partition-worker-label">MERGE</span>
+        </Html>
+      </group>
+      <group position={[2.85, 0.84, 0]} scale={0.82}>
+        <FoundryPartArtifact accent={accent} secondaryAccent="#FFCC01" />
+        <Html pointerEvents="none" center position={[0, 0.9, 0]} distanceFactor={9}>
+          <span className="partition-output-label">{outputLabel}</span>
+        </Html>
+      </group>
+    </group>
+  );
+}
+
+function PartitionBoundaryVisualization() {
+  return (
+    <group position={[0, 0.48, 0]}>
+      <MachinePlate position={[0, 0.1, 0]} size={[9.8, 0.22, 5.7]} color="#D7D8D4" />
+      <PartitionLane z={-1.32} label="2026-08" accent={COLORS.cyan} outputLabel="AUGUST · NEW PART" />
+      <PartitionLane z={1.32} label="2026-09" accent={COLORS.yellow} outputLabel="SEPTEMBER · NEW PART" />
+      <RoundedBox args={[9.15, 0.24, 0.12]} radius={0.035} smoothness={2} position={[0, 0.38, 0]} castShadow>
+        <meshStandardMaterial color="#15171A" roughness={0.3} metalness={0.48} />
+      </RoundedBox>
+      <Html pointerEvents="none" center position={[0, 0.82, 2.82]} distanceFactor={9}>
+        <span className="partition-boundary-label">PARTITION BOUNDARY · PARTS NEVER MERGE ACROSS IT</span>
+      </Html>
+      <Html pointerEvents="none" center position={[0, 5.18, 0]} distanceFactor={9}>
+        <div className="mechanism-machine-title mechanism-machine-title--partition">
+          <span>MERGETREE PARTITION BOUNDARY</span>
+          <strong>Two independent merge pools</strong>
+          <small>Parts consolidate only with compatible parts inside the same lifecycle boundary.</small>
+        </div>
+      </Html>
+    </group>
+  );
+}
+
 function BlockFoundryMachine({ exploded, mobile, pressure, scenario }: { exploded: boolean; mobile: boolean; pressure: boolean; scenario: ScenarioMode }) {
   const machine = useRef<THREE.Group>(null);
   const part = useRef<THREE.Group>(null);
@@ -3451,7 +3547,10 @@ function MergeTreeFoundry({ mobile }: { mobile: boolean }) {
   const scenario = useAtlasStore((state) => state.scenario);
   const family = useAtlasStore((state) => state.mergeFamilyId);
   const strategy = useAtlasStore((state) => state.latestReadStrategy);
+  const recommendationOpen = useAtlasStore((state) => Boolean(state.recommendation) && state.journeyPanelOpen && !state.activeJourneyId);
   const exploded = selected === "mergetree.part-anatomy" && viewLevel === "xray";
+  const mergeVisual = mergeTreeVisualMode(selected, viewLevel);
+  const recommendationVisual = recommendationGotchaVisual(selected, recommendationOpen);
   const pressure = scenario !== "healthy" || selected === "mergetree.parts-pressure" || selected === "mergetree.forced-merge";
   const district = selected ? mechanismById(selected)?.districtId : null;
   const activeMachine = scenario === "merge-ttl-contention"
@@ -3464,6 +3563,20 @@ function MergeTreeFoundry({ mobile }: { mobile: boolean }) {
       ? <ReplicaLagVisualization />
     : scenario === "keeper-quorum-loss"
       ? <KeeperQuorumVisualization />
+    : recommendationVisual === "ordering"
+      ? <BadOrderingVisualization />
+    : recommendationVisual === "aggregation-spill"
+      ? <AggregationSpillVisualization />
+    : recommendationVisual === "keeper-quorum"
+      ? <KeeperQuorumVisualization />
+    : recommendationVisual === "replica-lag"
+      ? <ReplicaLagVisualization />
+    : mergeVisual === "part-anatomy" || mergeVisual === "part-xray"
+      ? <PartAnatomyVisualization xray={mergeVisual === "part-xray"} />
+    : mergeVisual === "partition-boundary"
+      ? <PartitionBoundaryVisualization />
+    : mergeVisual === "parts-pressure"
+      ? <TinyInsertStormVisualization />
     : selected && district && district !== "mergetree"
     ? district === "ingestion"
       ? <IngestionManifold id={selected} pressure={pressure} />

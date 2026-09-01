@@ -125,7 +125,11 @@ test.describe("responsive and interaction stress", () => {
         workload: "cdc", ingestRate: "high", latencyTarget: "seconds", retention: "months",
         updates: "frequent", availability: "high", topology: "single-region", costPriority: "balanced",
       });
-    }) as { decisions: Array<{ mechanismId: string; title: string }>; visualGuide: { currentStep: string } };
+    }) as {
+      decisions: Array<{ mechanismId: string; title: string }>;
+      mergeFamilyRecommendation: { familyId: string; latestReadStrategy: string };
+      visualGuide: { currentStep: string };
+    };
 
     expect(result.visualGuide.currentStep).toBe(result.decisions[0]?.mechanismId);
     const guide = page.getByRole("complementary", { name: "Your ClickHouse architecture recommendation" });
@@ -134,6 +138,8 @@ test.describe("responsive and interaction stress", () => {
     await expect(guide.getByText("CDC", { exact: true })).toBeVisible();
     await expect(guide.getByText(/Use ClickPipes where the source is supported/)).toBeVisible();
     await expect(page.locator(".family-workbench")).toHaveCount(0);
+    await expect(guide.getByRole("region", { name: "Recommended MergeTree storage and read contract" })).toContainText("ReplacingMergeTree");
+    await expect(guide.getByRole("region", { name: "Recommended MergeTree storage and read contract" })).toContainText("argMax current-state reads");
 
     const progress = guide.getByRole("navigation", { name: "Recommendation steps" });
     const slider = guide.getByRole("slider", { name: "Move through the recommended architecture" });
@@ -143,6 +149,10 @@ test.describe("responsive and interaction stress", () => {
     await expect(progress.getByRole("button").first()).toHaveAttribute("data-active", "true");
     await guide.getByRole("button", { name: "Next decision", exact: true }).click({ force: true });
     await expect(progress.getByRole("button").nth(1)).toHaveAttribute("data-active", "true");
+    const partitionStepIndex = result.decisions.findIndex((entry) => entry.mechanismId === "mergetree.partition-boundary");
+    expect(partitionStepIndex).toBeGreaterThanOrEqual(0);
+    await progress.getByRole("button").nth(partitionStepIndex).click();
+    await expect(page.locator(".partition-boundary-label")).toContainText("PARTS NEVER MERGE ACROSS IT");
     await slider.press("End");
     await expect(progress.getByRole("button").last()).toHaveAttribute("data-active", "true");
     await expect(page.locator(".inspector-shell")).toHaveCount(0);

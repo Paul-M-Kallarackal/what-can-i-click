@@ -171,7 +171,7 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
       storyIndex: 0,
       storyRevision: get().storyRevision + 1,
       simulationTime: 0,
-      playing: false,
+      playing: true,
       selectedMechanismId: firstDecision?.mechanismId ?? recommendation.path[0] ?? null,
       selectedEvidenceId: null,
       evidenceComparisonId: null,
@@ -199,7 +199,7 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
       viewLevel: "mechanism",
       scenario: "healthy",
       simulationTime: 0,
-      playing: false,
+      playing: true,
       inspectorSnap: "peek",
     };
   }),

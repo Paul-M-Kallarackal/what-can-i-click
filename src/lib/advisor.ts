@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { COMPANY_EVIDENCE, SOURCES } from "../data/evidence";
-import type { ArchitectureDecision, ArchitectureRecommendation, EvidenceReference, MechanismId, Tradeoff, WorkloadProfile } from "../types";
+import type { ArchitectureDecision, ArchitectureRecommendation, EvidenceReference, LatestReadStrategy, MechanismId, MergeFamilyId, Tradeoff, WorkloadProfile } from "../types";
 
 export const workloadProfileSchema = z.object({
   workload: z.enum(["observability", "product-analytics", "cdc", "iot", "financial", "general"]),
@@ -45,6 +45,36 @@ const aggregationRisk: Record<WorkloadProfile["workload"], string> = {
 };
 
 type AccelerationGoal = NonNullable<WorkloadProfile["accelerationGoal"]>;
+
+export type MergeFamilyRecommendation = {
+  familyId: MergeFamilyId;
+  latestReadStrategy: LatestReadStrategy;
+  reason: string;
+};
+
+/**
+ * The bounded workload schema does not contain enough information to safely
+ * infer Summing, Aggregating, Collapsing, or Coalescing contracts. Keep those
+ * families opt-in through explicit inspection. The advisor can, however,
+ * distinguish immutable facts from appended row versions without borrowing a
+ * canned use-case journey.
+ */
+export function recommendMergeFamily(profile: WorkloadProfile): MergeFamilyRecommendation {
+  const parsed = workloadProfileSchema.parse(profile);
+  if (parsed.updates === "append-only") {
+    return {
+      familyId: "merge",
+      latestReadStrategy: "background",
+      reason: "Append-only facts fit plain MergeTree: background merges preserve every row while consolidating immutable parts.",
+    };
+  }
+
+  return {
+    familyId: "replacing",
+    latestReadStrategy: "argmax",
+    reason: "Appended row versions fit ReplacingMergeTree. Use an explicit argMax(version) read boundary for current state instead of assuming background deduplication has already completed; reserve FINAL for bounded cases you have measured.",
+  };
+}
 
 export function resolveAccelerationGoal(profile: WorkloadProfile): AccelerationGoal {
   if (profile.accelerationGoal) return profile.accelerationGoal;
@@ -127,9 +157,9 @@ export function recommendArchitecture(rawProfile: WorkloadProfile): Architecture
   }));
 
   path.push("mergetree.part-anatomy");
-  if (profile.updates === "frequent") path.push("mergetree.part-lifecycle");
+  if (profile.updates !== "append-only") path.push("mergetree.part-lifecycle");
   decisions.push(decision({
-    mechanismId: profile.updates === "frequent" ? "mergetree.part-lifecycle" : "mergetree.part-anatomy",
+    mechanismId: profile.updates === "append-only" ? "mergetree.part-anatomy" : "mergetree.part-lifecycle",
     title: profile.updates === "append-only" ? "Immutable MergeTree facts" : "Versioned replacement model",
     recommendation: profile.updates === "append-only"
       ? "Use MergeTree with an ORDER BY key beginning with common selective filters."

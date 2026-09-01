@@ -4,8 +4,7 @@ import { COMPANY_ARCHITECTURE_RECIPES, companyArchitectureRecipeById, declaredRe
 import { COMPANY_IMPLEMENTATIONS, companyImplementationById, matchCompanyImplementations, type CompanyImplementation } from "../data/companyImplementations";
 import { DISTRICTS, MECHANISMS, mechanismById, searchMechanisms } from "../data/mechanisms";
 import { LATEST_READ_STRATEGIES, MERGE_FAMILIES, mergeFamilyById, mergeFamilySupportsReadStrategy } from "../data/mergeFamilies";
-import { nearestUseCaseJourney } from "../data/useCaseJourneys";
-import { recommendArchitecture, workloadProfileSchema } from "../lib/advisor";
+import { recommendArchitecture, recommendMergeFamily, workloadProfileSchema } from "../lib/advisor";
 import { useAtlasStore } from "../store/useAtlasStore";
 import type { LatestReadStrategy, MechanismId, MergeFamilyId } from "../types";
 
@@ -192,10 +191,9 @@ export function createToolDefinitions(): ToolDefinition[] {
         if (options?.signal?.aborted) throw options.signal.reason;
         const profile = workloadProfileSchema.parse(input);
         const recommendation = recommendArchitecture(profile);
-        const journey = nearestUseCaseJourney(profile);
-        const mergeFamilyRecommendation = { familyId: journey.familyId, latestReadStrategy: journey.strategy.latestRead ?? "background" as LatestReadStrategy, reason: journey.strategy.rationale };
+        const mergeFamilyRecommendation = recommendMergeFamily(profile);
         const store = useAtlasStore.getState();
-        store.setMergeFamily(journey.familyId);
+        store.setMergeFamily(mergeFamilyRecommendation.familyId);
         store.setLatestReadStrategy(mergeFamilyRecommendation.latestReadStrategy);
         store.setRecommendation(recommendation, profile);
         return {

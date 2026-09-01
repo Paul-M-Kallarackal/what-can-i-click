@@ -23,6 +23,7 @@ import {
   foundryMergeFrame,
   foundryPartLifecycle,
   keeperQuorumFrame,
+  mergeTreeVisualMode,
   motionLoop,
   motionStage,
   motionWindow,
@@ -31,6 +32,7 @@ import {
   replacingReadFrame,
   replicaLagFrame,
   requestTidbitFocusFeedback,
+  recommendationGotchaVisual,
   retargetTidbitFocusCue,
   setComposedMaterialBaseOpacity,
   subscribeTidbitFocusFeedback,
@@ -576,5 +578,35 @@ describe("family canopy density", () => {
       expect(density.tonalShades).toBeGreaterThanOrEqual(3);
       expect(density.tonalShades).toBeLessThanOrEqual(5);
     }
+  });
+});
+
+describe("MergeTree recommendation visuals", () => {
+  it("routes core recommendation mechanisms to dedicated scenes", () => {
+    expect(mergeTreeVisualMode("mergetree.part-anatomy", "mechanism")).toBe("part-anatomy");
+    expect(mergeTreeVisualMode("mergetree.part-anatomy", "xray")).toBe("part-xray");
+    expect(mergeTreeVisualMode("mergetree.partition-boundary", "mechanism")).toBe("partition-boundary");
+    expect(mergeTreeVisualMode("mergetree.parts-pressure", "mechanism")).toBe("parts-pressure");
+  });
+
+  it("leaves merge lifecycle and family-specific work on the foundry scene", () => {
+    expect(mergeTreeVisualMode("mergetree.part-lifecycle", "mechanism")).toBe("family");
+    expect(mergeTreeVisualMode("read.ordering", "mechanism")).toBe("family");
+    expect(mergeTreeVisualMode(null, "system")).toBe("family");
+  });
+});
+
+describe("agent-only gotcha visual routing", () => {
+  it("uses the causal gotcha-and-exit scenes while a recommendation is open", () => {
+    expect(recommendationGotchaVisual("read.ordering", true)).toBe("ordering");
+    expect(recommendationGotchaVisual("memory.external-spill", true)).toBe("aggregation-spill");
+    expect(recommendationGotchaVisual("architecture.keeper", true)).toBe("keeper-quorum");
+    expect(recommendationGotchaVisual("observability.replication-queue", true)).toBe("replica-lag");
+  });
+
+  it("keeps those intervention scenes agent-triggered", () => {
+    expect(recommendationGotchaVisual("read.ordering", false)).toBeNull();
+    expect(recommendationGotchaVisual("memory.external-spill", false)).toBeNull();
+    expect(recommendationGotchaVisual("retention.ttl-delete", true)).toBeNull();
   });
 });

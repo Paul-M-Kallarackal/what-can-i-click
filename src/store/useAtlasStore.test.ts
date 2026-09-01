@@ -90,8 +90,9 @@ describe("visual-note state", () => {
       journeyPanelOpen: true,
       activeJourneyId: null,
       selectedMechanismId: recommendation.decisions[0]?.mechanismId,
+      mergeFamilyId: "merge",
       scenario: "healthy",
-      playing: false,
+      playing: true,
     });
 
     useAtlasStore.getState().setRecommendationStep(3);
@@ -103,5 +104,18 @@ describe("visual-note state", () => {
 
     useAtlasStore.getState().setRecommendationStep(999);
     expect(useAtlasStore.getState().recommendationStepIndex).toBe(recommendation.decisions.length - 1);
+  });
+
+  it("preserves the family and read contract selected by the WebMCP advisor", () => {
+    const cdcProfile: WorkloadProfile = { ...recommendationProfile, workload: "cdc", updates: "frequent" };
+    useAtlasStore.getState().setMergeFamily("replacing");
+    useAtlasStore.getState().setLatestReadStrategy("argmax");
+    useAtlasStore.getState().setRecommendation(recommendArchitecture(cdcProfile), cdcProfile);
+
+    expect(useAtlasStore.getState()).toMatchObject({
+      mergeFamilyId: "replacing",
+      latestReadStrategy: "argmax",
+      scenario: "healthy",
+    });
   });
 });

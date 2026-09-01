@@ -2748,6 +2748,35 @@ html[data-cutaway-open="true"] .operational-hud { display: none; }
   font-weight: 650;
 }
 
+.recommendation-contract {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 3px 12px;
+  padding: 13px 14px;
+  border: 1px solid #15171a;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: inset 5px 0 0 #ffcc01;
+}
+.recommendation-contract > span {
+  grid-column: 1 / -1;
+  color: #555;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.recommendation-contract strong { font-size: 18px; }
+.recommendation-contract b {
+  padding: 6px 8px;
+  border-radius: 8px;
+  color: #114e50;
+  background: #e9f8f7;
+  font-size: 12px;
+}
+
 .recommendation-route {
   position: sticky;
   z-index: 3;
@@ -2948,11 +2977,54 @@ html[data-cutaway-open="true"] .operational-hud { display: none; }
 .recommendation-checklist > summary:focus-visible,
 .recommendation-sources a:focus-visible { outline: 3px solid #0e6467; outline-offset: 2px; }
 
+.mechanism-machine-title--part,
+.mechanism-machine-title--partition {
+  width: min(470px, 50vw);
+  border-width: 1px;
+  box-shadow: inset 5px 0 0 #ffcc01, 0 10px 28px rgba(17,17,17,.11);
+}
+
+.mechanism-machine-title--part strong,
+.mechanism-machine-title--partition strong { font-size: 24px; }
+
+.part-anatomy-contract,
+.partition-part-index,
+.partition-lane-label,
+.partition-worker-label,
+.partition-output-label,
+.partition-boundary-label {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 9px;
+  border: 1px solid #d2d2d2;
+  border-radius: 7px;
+  color: #15171a;
+  background: rgba(255,255,255,.97);
+  box-shadow: 0 5px 18px rgba(17,17,17,.09);
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .045em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.part-anatomy-contract { min-height: 34px; border-color: #15171a; font-size: 12px; }
+.partition-part-index { min-width: 24px; min-height: 24px; padding: 0; border-color: #15171a; font-size: 10px; }
+.partition-lane-label { min-height: 28px; box-shadow: inset 4px 0 0 #78d7d2, 0 5px 18px rgba(17,17,17,.09); }
+.partition-worker-label { color: #fff; border-color: #15171a; background: #15171a; }
+.partition-output-label { box-shadow: inset 4px 0 0 #ffcc01, 0 5px 18px rgba(17,17,17,.09); }
+.partition-boundary-label { min-height: 32px; color: #fff; border-color: #15171a; background: #15171a; }
+
 @media (max-width: 760px) {
   .journey-panel.recommendation-panel { top: 74px; right: 6px; bottom: 70px; left: 6px; width: auto; padding: 18px; }
   .recommendation-panel > header h2 { font-size: 31px; }
   .recommendation-panel > header > p { font-size: 15px; }
   .recommendation-profile b { font-size: 11px; }
+  .recommendation-contract { grid-template-columns: 1fr; }
+  .recommendation-contract b { justify-self: start; }
   .recommendation-route__head span { font-size: 10px; }
   .recommendation-route__ticks button { width: 24px; height: 24px; font-size: 8px; }
   .recommendation-decision__head h3 { font-size: 24px; }
@@ -2962,4 +3034,10 @@ html[data-cutaway-open="true"] .operational-hud { display: none; }
   .recommendation-confidence small { display: none; }
   .recommendation-actions { padding: 14px; }
   .recommendation-actions button { min-height: 42px; padding-inline: 12px; font-size: 13px; }
+  .mechanism-machine-title--part,
+  .mechanism-machine-title--partition { width: min(360px, 82vw); }
+  .mechanism-machine-title--part strong,
+  .mechanism-machine-title--partition strong { font-size: 20px; }
+  .part-anatomy-contract,
+  .partition-boundary-label { font-size: 9px; }
 }

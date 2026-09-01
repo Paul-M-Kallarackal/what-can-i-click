@@ -317,6 +317,7 @@ export const USE_CASE_JOURNEYS: UseCaseJourney[] = [
       "mergetree.parts-pressure",
       "mergetree.partition-boundary",
       "mergetree.part-anatomy",
+      "mergetree.part-lifecycle",
       "read.ordering",
       "read.sparse-index",
       "read.granules",

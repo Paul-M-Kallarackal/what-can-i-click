@@ -1,6 +1,7 @@
 import { ArrowUpRight, Bot, Check, ChevronDown, ChevronLeft, ChevronRight, Play, ShieldCheck, X } from "lucide-react";
 import type { CSSProperties } from "react";
 import { mechanismById } from "../../data/mechanisms";
+import { mergeFamilyById } from "../../data/mergeFamilies";
 import { useAtlasStore } from "../../store/useAtlasStore";
 import type { ArchitectureRecommendation, WorkloadProfile } from "../../types";
 
@@ -14,6 +15,12 @@ const workloadLabels: Record<WorkloadProfile["workload"], string> = {
 };
 
 const phrase = (value: string) => value.replaceAll("-", " ");
+
+const readContractLabels = {
+  background: "Background merge semantics",
+  argmax: "argMax current-state reads",
+  final: "FINAL current-state reads",
+} as const;
 
 export function recommendationProfileFacts(profile: WorkloadProfile) {
   return [
@@ -55,6 +62,8 @@ export function RecommendationPanel() {
   const recommendation = useAtlasStore((state) => state.recommendation);
   const profile = useAtlasStore((state) => state.recommendationProfile);
   const stepIndex = useAtlasStore((state) => state.recommendationStepIndex);
+  const mergeFamilyId = useAtlasStore((state) => state.mergeFamilyId);
+  const latestReadStrategy = useAtlasStore((state) => state.latestReadStrategy);
 
   if (!open || activeJourneyId || !recommendation || !profile || recommendation.decisions.length === 0) return null;
 
@@ -62,6 +71,7 @@ export function RecommendationPanel() {
   if (!decision || !mechanism) return null;
 
   const facts = recommendationProfileFacts(profile);
+  const mergeFamily = mergeFamilyById(mergeFamilyId);
   const atEnd = index === recommendation.decisions.length - 1;
   const tradeoff = mechanism.tradeoffs[0] ?? recommendation.tradeoffs[Math.min(index, recommendation.tradeoffs.length - 1)];
   const move = (nextIndex: number) => useAtlasStore.getState().setRecommendationStep(nextIndex);
@@ -78,6 +88,12 @@ export function RecommendationPanel() {
       <section className="recommendation-profile" aria-label="Workload facts used for this recommendation">
         <span>Agent understood</span>
         <div>{facts.map((fact) => <b key={fact}>{fact}</b>)}</div>
+      </section>
+
+      <section className="recommendation-contract" aria-label="Recommended MergeTree storage and read contract">
+        <span>Chosen storage contract</span>
+        <strong>{mergeFamily.title}</strong>
+        <b>{readContractLabels[latestReadStrategy]}</b>
       </section>
 
       <nav
